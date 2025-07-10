@@ -1,6 +1,6 @@
-# Catalyst Demo
+# Glowing Hearts Admin Panel
 
-To run the Catalyst demo, first install the npm dependencies:
+To run the admin panel, first install the npm dependencies:
 
 ```bash
 npm install
