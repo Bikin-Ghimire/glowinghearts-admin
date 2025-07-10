@@ -23,19 +23,19 @@ export default async function Home() {
         </div>
       </div>
       <div className="mt-4 grid gap-8 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat title="Total revenue" value="$2.6M" change="+4.5%" />
-        <Stat title="Average order value" value="$455" change="-0.5%" />
-        <Stat title="Tickets sold" value="5,888" change="+4.5%" />
+        <Stat title="Amount Raised" value="$2.6M" change="+4.5%" />
+        <Stat title="Active Raffles" value="455" change="-0.5%" />
+        <Stat title="Tickets Sold" value="5,888" change="+4.5%" />
         <Stat title="Pageviews" value="823,067" change="+21.2%" />
       </div>
-      <Subheading className="mt-14">Recent orders</Subheading>
+      <Subheading className="mt-14">Recent ticket purchases</Subheading>
       <Table className="mt-4 [--gutter:--spacing(6)] lg:[--gutter:--spacing(10)]">
         <TableHead>
           <TableRow>
             <TableHeader>Order number</TableHeader>
             <TableHeader>Purchase date</TableHeader>
             <TableHeader>Customer</TableHeader>
-            <TableHeader>Event</TableHeader>
+            <TableHeader>Raffle</TableHeader>
             <TableHeader className="text-right">Amount</TableHeader>
           </TableRow>
         </TableHead>
