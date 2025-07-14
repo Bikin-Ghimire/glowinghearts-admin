@@ -1,3 +1,9 @@
+'use client'
+
+import { signIn } from 'next-auth/react'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+
 import { Logo } from '@/app/logo'
 import { Button } from '@/components/button'
 import { Checkbox, CheckboxField } from '@/components/checkbox'
@@ -5,28 +11,59 @@ import { Field, Label } from '@/components/fieldset'
 import { Heading } from '@/components/heading'
 import { Input } from '@/components/input'
 import { Strong, Text, TextLink } from '@/components/text'
-import type { Metadata } from 'next'
 
-export const metadata: Metadata = {
-  title: 'Login',
-}
+export default function LoginPage() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [remember, setRemember] = useState(false)
+  const router = useRouter()
 
-export default function Login() {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    // ✅ Set cookie BEFORE calling signIn, so backend sees it during authorize()
+    document.cookie = `rememberMeForward=${remember}; path=/`
+    
+    const res = await signIn('credentials', {
+      email,
+      password,
+      redirect: false,
+      callbackUrl: '/',
+    })
+
+    if (res?.ok) {
+      // Save preference in localStorage so middleware or backend can read it (optional)
+      if (remember) {
+        document.cookie = 'rememberMeForward=true; path=/'
+      } else {
+        document.cookie = 'rememberMeForward=false; path=/'
+      }
+
+      router.push(res.url || '/')
+    } else {
+      alert('Invalid email or password')
+    }
+  }
+
   return (
-    <form action="" method="POST" className="grid w-full max-w-sm grid-cols-1 gap-8">
-      <Logo className="h-6 text-zinc-950 dark:text-white forced-colors:text-[CanvasText]" />
+    <form onSubmit={handleLogin} className="grid w-full max-w-sm grid-cols-1 gap-8">
+      <Logo className="h-6 text-zinc-950 dark:text-white" />
       <Heading>Sign in to your account</Heading>
       <Field>
         <Label>Email</Label>
-        <Input type="email" name="email" />
+        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
       </Field>
       <Field>
         <Label>Password</Label>
-        <Input type="password" name="password" />
+        <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
       </Field>
       <div className="flex items-center justify-between">
         <CheckboxField>
-          <Checkbox name="remember" />
+          <Checkbox
+            checked={remember}
+            onChange={(checked: boolean) => setRemember(checked)}
+            name="remember"
+          />
           <Label>Remember me</Label>
         </CheckboxField>
         <Text>
@@ -38,12 +75,6 @@ export default function Login() {
       <Button type="submit" className="w-full">
         Login
       </Button>
-      <Text>
-        Don’t have an account?{' '}
-        <TextLink href="/register">
-          <Strong>Sign up</Strong>
-        </TextLink>
-      </Text>
     </form>
   )
 }

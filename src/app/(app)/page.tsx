@@ -5,6 +5,9 @@ import { Select } from '@/components/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/table'
 import { getRecentOrders } from '@/data'
 
+import { Button } from '@/components/button'
+import { PlusIcon } from '@heroicons/react/16/solid'
+
 export default async function Home() {
   let orders = await getRecentOrders()
 
@@ -14,12 +17,16 @@ export default async function Home() {
       <div className="mt-8 flex items-end justify-between">
         <Subheading>Overview</Subheading>
         <div>
-          <Select name="period">
+          {/* <Select name="period">
             <option value="last_week">Last week</option>
             <option value="last_two">Last two weeks</option>
             <option value="last_month">Last month</option>
             <option value="last_quarter">Last quarter</option>
-          </Select>
+          </Select> */}
+          <Button color='fuchsia' href="/raffles/create-raffle" className="flex items-center">
+            <PlusIcon className="mr-2" />
+            CREATE RAFFLE
+          </Button>
         </div>
       </div>
       <div className="mt-4 grid gap-8 sm:grid-cols-2 xl:grid-cols-4">
