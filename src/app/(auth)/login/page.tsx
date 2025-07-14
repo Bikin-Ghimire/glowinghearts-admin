@@ -51,7 +51,7 @@ export default function LoginPage() {
       <Heading>Sign in to your account</Heading>
       <Field>
         <Label>Email</Label>
-        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <Input value={email} onChange={(e) => setEmail(e.target.value)} required />
       </Field>
       <Field>
         <Label>Password</Label>
