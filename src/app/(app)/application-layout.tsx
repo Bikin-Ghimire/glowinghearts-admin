@@ -1,5 +1,7 @@
 'use client'
 
+import { signOut } from 'next-auth/react'
+
 import { Avatar } from '@/components/avatar'
 import {
   Dropdown,
@@ -53,7 +55,12 @@ function AccountDropdownMenu({ anchor }: { anchor: 'top start' | 'bottom end' })
         <DropdownLabel>My account</DropdownLabel>
       </DropdownItem>
       <DropdownDivider />
-      <DropdownItem href="/login">
+      <DropdownItem
+        onClick={() => {
+          document.cookie = 'rememberMeForward=; Max-Age=0; path=/'
+          signOut({ redirect: true, callbackUrl: '/login' })
+        }}
+      >
         <ArrowRightStartOnRectangleIcon />
         <DropdownLabel>Sign out</DropdownLabel>
       </DropdownItem>
@@ -118,12 +125,12 @@ export function ApplicationLayout({
                 <TrophyIcon />
                 <SidebarLabel>Charity</SidebarLabel>
               </SidebarItem>
-              <SidebarItem href="/orders" current={pathname.startsWith('/orders')}>
+              <SidebarItem href="/raffles" current={pathname.startsWith('/raffles')}>
                 <TicketIcon />
                 <SidebarLabel>Raffle</SidebarLabel>
               </SidebarItem>
               <SidebarDivider />
-              <SidebarItem href="/settings" current={pathname.startsWith('/settings')}>
+              <SidebarItem href="/users" current={pathname.startsWith('/users')}>
                 <UserCircleIcon />
                 <SidebarLabel>Users</SidebarLabel>
               </SidebarItem>

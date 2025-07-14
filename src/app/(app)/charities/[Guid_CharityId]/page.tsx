@@ -107,7 +107,7 @@ export default async function CharityPage({ params: {Guid_CharityId} }: Params) 
         </TableHead>
         <TableBody>
           {raffles.map((raffle) => (
-            <TableRow key={raffle.Guid_RaffleId} href="#" title={`Raffle #${raffle.Guid_RaffleId}`}>
+            <TableRow key={raffle.Guid_DrawId} href={`/raffles/${raffle.Guid_DrawId}`} title={`Raffle #${raffle.Guid_DrawId}`}>
               <TableCell>{raffle.VC_RaffleName}</TableCell>
               <TableCell className="text-zinc-500">{raffle.Dt_SalesOpen}</TableCell>
               <TableCell>{raffle.Dt_SalesClose}</TableCell>
