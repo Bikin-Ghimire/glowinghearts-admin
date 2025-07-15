@@ -18,7 +18,7 @@ export const authOptions: NextAuthOptions = {
         const rememberMe = cookies().get('rememberMe')?.value === 'true'
 
         if (email === '210d54a3-5eb2-11f0-8511-3cecef59123c' && password === 'gogogogo') {
-          return { id: '1', name: 'Admin', email, rememberMe }
+          return { id: '1', name: 'Admin', email, rememberMe, password}
         }
 
         return null
@@ -41,6 +41,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id
         token.email = user.email
         token.rememberMe = user.rememberMe
+        token.password = user.password  // Must be passed from `authorize()`
 
         // Store a custom expiration based on rememberMe
         token.exp = Math.floor(
@@ -55,6 +56,7 @@ export const authOptions: NextAuthOptions = {
       session.user.id = String(token.id)
       session.user.email = String(token.email)
       session.user.rememberMe = Boolean(token.rememberMe)
+      session.user.password = token.password  // Must be passed from `authorize()`
 
       const exp = typeof token.exp === 'number' ? token.exp : 0
       session.expires = new Date(exp * 1000).toISOString()

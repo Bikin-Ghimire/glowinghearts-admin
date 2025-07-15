@@ -1,5 +1,7 @@
 'use client'
 import {useState, useEffect} from 'react'
+import { useSession } from 'next-auth/react'
+import { PlusIcon } from '@heroicons/react/16/solid'
 
 import { Badge } from '@/components/badge'
 import { Button } from '@/components/button'
@@ -12,6 +14,7 @@ import { Select } from '@/components/select'
 import { EllipsisVerticalIcon, MagnifyingGlassIcon } from '@heroicons/react/16/solid'
 
 export default function CharityList() {
+  const { data: session } = useSession()
   const [charities, setCharities] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -21,22 +24,47 @@ export default function CharityList() {
   { label: string; color: 'lime' | 'red' | 'zinc' }
 > = {
   1: { label: 'Active', color: 'lime' },
-  2: { label: 'Deactive', color: 'red' },
-  3: { label: 'New',    color: 'zinc' },
+  2: { label: 'Disabled', color: 'red' },
+  3: { label: 'Review', color: 'zinc' },
 };
 
   useEffect(() => {
-    fetch(`/api/Charities`)
-        .then(res => {
-                if (!res.ok) throw new Error(`HTTP ${res.status}`)
-                return res.json()
-        })
-        .then(data => {
-            const list = Array.isArray(data.obj_Charities) ? data.obj_Charities : [];
-            setCharities(list)
-            setLoading(false)
-        })
-  }, [])
+    const fetchCharities = async () => {
+      if (!session?.user?.email || !session?.user?.password) return
+
+      // Step 1: Ask server to give you a JWT token
+      const jwtResponse = await fetch('/api/create-jwt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          VC_Email: session.user.email,
+          VC_Pwd: session.user.password,
+        }),
+      })
+
+      const { token } = await jwtResponse.json()
+
+      // Step 2: Use that token to call the protected API
+      const res = await fetch('/api/Charities', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      const list = Array.isArray(data.obj_Charities) ? data.obj_Charities : []
+      setCharities(list)
+      setLoading(false)
+    }
+
+    fetchCharities().catch((err) => {
+      setError(err.message)
+      setLoading(false)
+    })
+  }, [session])
 
   if (loading) return <p>Loading...</p>
   if (error) return <p className='text-red-600'>Error: {error}</p>
@@ -62,7 +90,10 @@ export default function CharityList() {
             </div>
           </div>
         </div>
-        <Button>Create charity</Button>
+        <Button color='blue' href="/charities/create-charity" className="flex items-center">
+          <PlusIcon className="mr-2" />
+          CREATE CHARITY
+        </Button>
       </div>
       <ul className="mt-10">
         {charities.map((charity, index) => {

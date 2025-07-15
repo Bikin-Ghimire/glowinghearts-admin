@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import {
   Combobox,
   ComboboxLabel,
@@ -16,6 +18,7 @@ const steps = [
 ]
 
 export default function RaffleCreation() {
+    const { data: session } = useSession()
     // State for step navigation
     const [currentStepIndex, setCurrentStepIndex] = useState(0)
 
@@ -125,18 +128,40 @@ export default function RaffleCreation() {
     rngRange2.to > rngRange2.from &&
     rngRange2.to <= 999
 
-  // Fetch charities once
+  // Fetch charities with JWT
   useEffect(() => {
-    fetch(`/api/Charities`)
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json()
+    async function fetchCharities() {
+      if (!session?.user?.email || !session?.user?.password) return
+
+      const jwtRes = await fetch('/api/create-jwt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          VC_Email: session.user.email,
+          VC_Pwd: session.user.password,
+        }),
       })
-      .then(data => {
-        const list = Array.isArray(data.obj_Charities) ? data.obj_Charities : []
-        setCharities(list)
+
+      const { token } = await jwtRes.json()
+
+      const res = await fetch('/api/Charities', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       })
-  }, [])
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      const list = Array.isArray(data.obj_Charities)
+        ? data.obj_Charities.filter((charity) => charity.Int_CharityStatus === 1)
+        : []
+      setCharities(list)
+    }
+
+    fetchCharities().catch(console.error)
+  }, [session])
 
   const filteredCharities =
     query === ''
@@ -229,10 +254,7 @@ export default function RaffleCreation() {
         {currentStepIndex === 0 && (
           <div>
             <h2 className="text-xl font-semibold mb-4">Select Charity</h2>
-
-            <ComboboxLabel className="block text-sm font-medium text-gray-700 mb-1">
-              Charity
-            </ComboboxLabel>
+            <p className='mb-5'>If you can't find your charity in the list below, make sure they are created and activated in <Link className='text-indigo-600 hover:text-indigo-800' href="/charities">Charity List</Link>.</p>
 
             <Combobox
               options={filteredCharities}

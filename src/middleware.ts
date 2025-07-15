@@ -1,5 +1,3 @@
-// src/middleware.ts
-
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
@@ -8,10 +6,11 @@ export async function middleware(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
   const { pathname } = req.nextUrl
 
-  // Sync rememberMeForward cookie
+  const res = NextResponse.next()
+
+  // ✅ Sync rememberMe cookie
   const rememberMeFromClient = req.cookies.get('rememberMeForward')?.value
-  if (rememberMeFromClient) {
-    const res = NextResponse.next()
+  if (rememberMeFromClient !== undefined) {
     res.cookies.set('rememberMe', rememberMeFromClient, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -19,7 +18,6 @@ export async function middleware(req: NextRequest) {
       path: '/',
     })
     res.cookies.delete('rememberMeForward')
-    return res
   }
 
   const isAuthPage = pathname.startsWith('/login')
@@ -28,13 +26,13 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/', req.url))
   }
 
-  if (!token) {
+  if (!token && !isAuthPage) {
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
-  return NextResponse.next()
+  return res
 }
 
 export const config = {
-  matcher: ['/((?!api|_next|static|favicon.ico|login).*)'],
+  matcher: ['/((?!api|_next|static|favicon.ico|login).*)', '/login'],
 }
