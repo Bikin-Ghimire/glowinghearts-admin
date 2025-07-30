@@ -1,7 +1,5 @@
-import CharityList from '@/components/charity-list'
+import CharityList from '@/components/charity/charity-list'
 
-export default function AdminPage() {
-  return (
-    <CharityList />
-  )
+export default function CharitiesPage() {
+  return <CharityList />
 }

@@ -6,7 +6,7 @@ import { PlusIcon } from '@heroicons/react/16/solid'
 import { Badge } from '@/components/badge'
 import { Button } from '@/components/button'
 import { Divider } from '@/components/divider'
-import { Dropdown, DropdownButton, DropdownItem, DropdownMenu } from '@/components/dropdown'
+import { Dropdown, DropdownButton, DropdownDivider, DropdownSection, DropdownItem, DropdownMenu } from '@/components/dropdown'
 import { Heading } from '@/components/heading'
 import { Input, InputGroup } from '@/components/input'
 import { Link } from '@/components/link'
@@ -45,7 +45,7 @@ export default function CharityList() {
       const { token } = await jwtResponse.json()
 
       // Step 2: Use that token to call the protected API
-      const res = await fetch('/api/Charities', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Charities`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -68,6 +68,76 @@ export default function CharityList() {
 
   if (loading) return <p>Loading...</p>
   if (error) return <p className='text-red-600'>Error: {error}</p>
+
+  const handleActivate = async (id: string) => {
+    if (!session?.user?.email || !session?.user?.password) return
+
+    try {
+      const jwtResponse = await fetch('/api/create-jwt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          VC_Email: session.user.email,
+          VC_Pwd: session.user.password,
+        }),
+      })
+
+      const { token } = await jwtResponse.json()
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Charities/Activate/${id}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!res.ok) throw new Error(`Failed to activate charity (${res.status})`)
+
+      // Refresh the list
+      setCharities(prev =>
+        prev.map(c => (c.Guid_CharityId === id ? { ...c, Int_CharityStatus: 1 } : c))
+      )
+    } catch (err) {
+      console.error(err)
+      alert('Could not activate charity.')
+    }
+  }
+
+  const handleDeactivate = async (id: string) => {
+    if (!session?.user?.email || !session?.user?.password) return
+
+    try {
+      const jwtResponse = await fetch('/api/create-jwt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          VC_Email: session.user.email,
+          VC_Pwd: session.user.password,
+        }),
+      })
+
+      const { token } = await jwtResponse.json()
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Charities/DeActivate/${id}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!res.ok) throw new Error(`Failed to deactivate charity (${res.status})`)
+
+      // Refresh the list
+      setCharities(prev =>
+        prev.map(c => (c.Guid_CharityId === id ? { ...c, Int_CharityStatus: 2 } : c))
+      )
+    } catch (err) {
+      console.error(err)
+      alert('Could not deactivate charity.')
+    }
+  }
 
   return (
     <>
@@ -128,9 +198,24 @@ export default function CharityList() {
                             <EllipsisVerticalIcon />
                         </DropdownButton>
                         <DropdownMenu anchor="bottom end">
-                            <DropdownItem href='#'>View</DropdownItem>
+                          <DropdownSection>
+                            <DropdownItem href="#">View</DropdownItem>
                             <DropdownItem>Edit</DropdownItem>
-                            <DropdownItem>Delete</DropdownItem>
+                          </DropdownSection>
+                          <DropdownDivider />
+
+                          <DropdownSection>
+                            {(charity.Int_CharityStatus === 2 || charity.Int_CharityStatus === 3) && (
+                              <DropdownItem onClick={() => handleActivate(charity.Guid_CharityId)}>
+                                <span className="text-green-600 dark:text-green-400 group-data-[focus]:text-white">Activate</span>
+                              </DropdownItem>
+                            )}
+                            {(charity.Int_CharityStatus === 1 || charity.Int_CharityStatus === 3) && (
+                              <DropdownItem onClick={() => handleDeactivate(charity.Guid_CharityId)}>
+                                <span className="text-red-600 dark:text-red-400 group-data-[focus]:text-white">Disable</span>
+                              </DropdownItem>
+                            )}
+                          </DropdownSection>
                         </DropdownMenu>
                         </Dropdown>
                     </div>
