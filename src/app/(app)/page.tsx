@@ -13,56 +13,87 @@ export default async function Home() {
 
   return (
     <>
-      <Heading>Good afternoon, Erica</Heading>
+      <div className="mt-8 flex items-end justify-between">
+        <Heading>
+          Good afternoon, Erica
+        </Heading>
+          <div>
+            <Button color="fuchsia" href="/raffles/create-raffle" className="flex items-center">
+              <PlusIcon className="mr-2" />
+              CREATE RAFFLE
+            </Button>
+          </div>
+      </div>
       <div className="mt-8 flex items-end justify-between">
         <Subheading>Overview</Subheading>
         <div>
-          {/* <Select name="period">
+          <Select name="period">
             <option value="last_week">Last week</option>
             <option value="last_two">Last two weeks</option>
             <option value="last_month">Last month</option>
             <option value="last_quarter">Last quarter</option>
-          </Select> */}
-          <Button color='fuchsia' href="/raffles/create-raffle" className="flex items-center">
-            <PlusIcon className="mr-2" />
-            CREATE RAFFLE
-          </Button>
+          </Select>
         </div>
       </div>
       <div className="mt-4 grid gap-8 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat title="Amount Raised" value="$2.6M" change="+4.5%" />
-        <Stat title="Active Raffles" value="455" change="-0.5%" />
-        <Stat title="Tickets Sold" value="5,888" change="+4.5%" />
-        <Stat title="Pageviews" value="823,067" change="+21.2%" />
+        <Stat title="Amount Raised" value="$2.6M" />
+        <Stat title="Tickets Sold" value="455" />
+        <Stat title="Raffles Completed" value="5,888" />
+        <Stat title="Transactions Completed" value="823,067" />
       </div>
-      <Subheading className="mt-14">Recent ticket purchases</Subheading>
-      <Table className="mt-4 [--gutter:--spacing(6)] lg:[--gutter:--spacing(10)]">
-        <TableHead>
-          <TableRow>
-            <TableHeader>Order number</TableHeader>
-            <TableHeader>Purchase date</TableHeader>
-            <TableHeader>Customer</TableHeader>
-            <TableHeader>Raffle</TableHeader>
-            <TableHeader className="text-right">Amount</TableHeader>
+      <div className="mt-14 grid grid-cols-1 lg:grid-cols-2 gap-8">
+  {/* Table 1: Recent Orders */}
+  <div>
+    <Subheading>Top Charities by number of Raffles</Subheading>
+    <Table className="mt-4 [--gutter:--spacing(6)] lg:[--gutter:--spacing(10)]">
+      <TableHead>
+        <TableRow>
+          <TableHeader>Charity</TableHeader>
+          <TableHeader className="text-right">Raffles Conducted</TableHeader>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {orders.map((order) => (
+          <TableRow key={order.id} href={order.url} title={`Order #${order.id}`}>
+            <TableCell>
+              <div className="flex items-center gap-2">
+                <Avatar src={order.event.thumbUrl} className="size-6" />
+                <span>{order.event.name}</span>
+              </div>
+            </TableCell>
+            <TableCell className="text-right">{order.amount.usd}</TableCell>
           </TableRow>
-        </TableHead>
-        <TableBody>
-          {orders.map((order) => (
-            <TableRow key={order.id} href={order.url} title={`Order #${order.id}`}>
-              <TableCell>{order.id}</TableCell>
-              <TableCell className="text-zinc-500">{order.date}</TableCell>
-              <TableCell>{order.customer.name}</TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <Avatar src={order.event.thumbUrl} className="size-6" />
-                  <span>{order.event.name}</span>
-                </div>
-              </TableCell>
-              <TableCell className="text-right">US{order.amount.usd}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+        ))}
+      </TableBody>
+    </Table>
+  </div>
+
+  {/* Table 2: Recent Raffle Purchases */}
+  <div>
+    <Subheading>Top Charities by Amount Raised</Subheading>
+    <Table className="mt-4 [--gutter:--spacing(6)] lg:[--gutter:--spacing(10)]">
+      <TableHead>
+        <TableRow>
+          <TableHeader>Charity</TableHeader>
+          <TableHeader className="text-right">Amount Raised</TableHeader>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {orders.map((order) => (
+          <TableRow key={order.id} href={order.url} title={`Order #${order.id}`}>
+            <TableCell>
+              <div className="flex items-center gap-2">
+                <Avatar src={order.event.thumbUrl} className="size-6" />
+                <span>{order.event.name}</span>
+              </div>
+            </TableCell>
+            <TableCell className="text-right">US{order.amount.usd}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  </div>
+</div>
     </>
   )
 }
