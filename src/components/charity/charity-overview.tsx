@@ -5,11 +5,10 @@ import { Button } from '@/components/button'
 import { Heading } from '@/components/heading'
 import { Link } from '@/components/link'
 import { SendOnboardingButton } from '@/components/onboarding-button'
-import { getTokenFromSession } from '@/hooks/use-session-token'
 import { charityStatusMap } from '@/lib/utils'
 import { ChevronLeftIcon } from '@heroicons/react/16/solid'
 import { useSession } from 'next-auth/react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 export function CharityOverview({
   charity,
@@ -31,39 +30,62 @@ export function CharityOverview({
     color: 'zinc',
   }
 
-  const updateCharityKey = async () => {
-    setLoading(true)
-    setMessage(null)
+  // const updateCharityKey = async () => {
+  //   setLoading(true)
+  //   setMessage(null)
 
-    try {
-      const token = await getTokenFromSession(session)
-      if (!token) throw new Error('Not authenticated')
+  //   try {
+  //     const token = await getTokenFromSession(session)
+  //     if (!token) throw new Error('Not authenticated')
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Charities/${charity.Guid_CharityId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          VC_CharityDesc: charity.VC_CharityDesc,
-          Txt_CharityDesc: charity.Txt_CharityDesc,
-          VC_ContactFirstName: charity.VC_ContactFirstName,
-          VC_ContactLastName: charity.VC_ContactLastName,
-          VC_ContactEmail: charity.VC_ContactEmail,
-          VC_ContactPhone: charity.VC_ContactPhone,
-          VC_CharityKey: charityKey,
-        }),
+  //     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Charities/${charity.Guid_CharityId}`, {
+  //       method: 'PUT',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         Authorization: `Bearer ${token}`,
+  //       },
+  //       body: JSON.stringify({
+  //         VC_CharityDesc: charity.VC_CharityDesc,
+  //         Txt_CharityDesc: charity.Txt_CharityDesc,
+  //         VC_ContactFirstName: charity.VC_ContactFirstName,
+  //         VC_ContactLastName: charity.VC_ContactLastName,
+  //         VC_ContactEmail: charity.VC_ContactEmail,
+  //         VC_ContactPhone: charity.VC_ContactPhone,
+  //         VC_CharityKey: charityKey,
+  //       }),
+  //     })
+
+  //     if (!res.ok) throw new Error('Failed to update charity key')
+  //     setMessage('Charity key updated successfully.')
+  //   } catch (err: any) {
+  //     setMessage(err.message || 'Something went wrong.')
+  //   } finally {
+  //     setLoading(false)
+  //   }
+  // }
+
+  const [stripeStatus, setStripeStatus] = useState<{
+    charges_enabled: boolean
+    details_submitted: boolean
+    payouts_enabled: boolean
+  } | null>(null)
+
+  useEffect(() => {
+    const fetchStripeStatus = async () => {
+      if (!charity?.VC_CharityKey) return
+
+      const res = await fetch('/api/stripe-status-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId: charity.VC_CharityKey }),
       })
 
-      if (!res.ok) throw new Error('Failed to update charity key')
-      setMessage('Charity key updated successfully.')
-    } catch (err: any) {
-      setMessage(err.message || 'Something went wrong.')
-    } finally {
-      setLoading(false)
+      const data = await res.json()
+      setStripeStatus(data)
     }
-  }
+
+    fetchStripeStatus()
+  }, [charity?.VC_CharityKey])
 
   return (
     <>
@@ -87,6 +109,7 @@ export function CharityOverview({
               <Heading>{charity.VC_CharityDesc}</Heading>
               <Badge color={color}>{label}</Badge>
             </div>
+            <div className="mt-2 text-sm/6 text-zinc-500">Charity Key: {charity.VC_CharityKey}</div>
           </div>
         </div>
         <div className="flex gap-4">
@@ -105,9 +128,24 @@ export function CharityOverview({
             </div>
           )}
           {charity.Int_CharityStatus !== 1 && (
-            <Button color="green" onClick={() => handleActivate(charity.Guid_CharityId)}>
-              Activate
-            </Button>
+            <div className="group relative">
+              <Button
+                color="green"
+                onClick={() => handleActivate(charity.Guid_CharityId)}
+                disabled={
+                  !stripeStatus?.charges_enabled || !stripeStatus?.details_submitted || !stripeStatus?.payouts_enabled
+                }
+              >
+                Activate
+              </Button>
+              {(!stripeStatus?.charges_enabled ||
+                !stripeStatus?.details_submitted ||
+                !stripeStatus?.payouts_enabled) && (
+                <div className="absolute top-full left-1/2 z-10 mt-1 w-max -translate-x-1/2 rounded bg-zinc-800 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100">
+                  Complete Stripe onboarding to activate
+                </div>
+              )}
+            </div>
           )}
           {charity.Int_CharityStatus === 1 && (
             <Button color="red" onClick={() => handleDeactivate(charity.Guid_CharityId)}>
@@ -119,20 +157,86 @@ export function CharityOverview({
 
       {!charity.VC_CharityKey && (
         <div className="mt-8">
-          <SendOnboardingButton email={charity.VC_ContactEmail} charityName={charity.VC_CharityDesc} />
+          <SendOnboardingButton
+            email={charity.VC_ContactEmail}
+            charityName={charity.VC_CharityDesc}
+            charityId={charity.Guid_CharityId}
+          />
+        </div>
+      )}
 
-          <div className="space-y-2">
-            <input
-              type="text"
-              className="mt-2 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm dark:border-zinc-600"
-              value={charityKey}
-              onChange={(e) => setCharityKey(e.target.value)}
-              placeholder="Enter charity key"
-            />
-            <Button onClick={updateCharityKey} disabled={loading || !charityKey}>
-              {loading ? 'Saving...' : 'Save Charity Key'}
+      {stripeStatus &&
+        (!stripeStatus.charges_enabled || !stripeStatus.details_submitted || !stripeStatus.payouts_enabled) && (
+          <div className="mt-8">
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                const res = await fetch('/api/resend-onboarding-link', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    email: charity.VC_ContactEmail,
+                    charityName: charity.VC_CharityDesc,
+                    charityId: charity.Guid_CharityId,
+                    stripeAccountId: charity.VC_CharityKey,
+                  }),
+                })
+
+                const result = await res.json()
+                if (res.ok) {
+                  alert('Onboarding email sent successfully!')
+                } else {
+                  alert(`Error: ${result.error}`)
+                }
+              }}
+            >
+              Resend Stripe Onboarding Email
             </Button>
-            {message && <p className="text-sm text-zinc-600 dark:text-zinc-300">{message}</p>}
+          </div>
+        )}
+
+      {stripeStatus && (
+        <div className="mt-4 rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+          <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">Stripe Account Status</h2>
+          <div className="space-y-3 text-sm text-zinc-700 dark:text-zinc-200">
+            <div className="flex items-center justify-between">
+              <span>Charges Enabled</span>
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${
+                  stripeStatus.charges_enabled
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                }`}
+              >
+                {stripeStatus.charges_enabled ? '✅ Enabled' : '❌ Not Enabled'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span>Details Submitted</span>
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${
+                  stripeStatus.details_submitted
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                }`}
+              >
+                {stripeStatus.details_submitted ? '✅ Submitted' : '❌ Missing'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span>Payouts Enabled</span>
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${
+                  stripeStatus.payouts_enabled
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                }`}
+              >
+                {stripeStatus.payouts_enabled ? '✅ Enabled' : '❌ Not Enabled'}
+              </span>
+            </div>
           </div>
         </div>
       )}

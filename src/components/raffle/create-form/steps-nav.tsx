@@ -4,11 +4,10 @@
 import React from 'react'
 
 const steps = [
-  { id: 'Step 1', name: 'Charity' },
-  { id: 'Step 2', name: 'Raffle' },
-  { id: 'Step 3', name: 'Prizes' },
-  { id: 'Step 4', name: 'Ticket Bundles' },
-  { id: 'Step 5', name: 'Review & Submit' },
+  { id: 'Step 1', name: 'Raffle' },
+  { id: 'Step 2', name: 'Prizes' },
+  { id: 'Step 3', name: 'Ticket Bundles' },
+  { id: 'Step 4', name: 'Review & Submit' },
 ]
 
 export default function RaffleStepsNav({

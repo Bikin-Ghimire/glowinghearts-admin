@@ -26,6 +26,9 @@ export default function CharityListView({ charities, refetchCharities, session }
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="max-sm:w-full sm:flex-1">
           <Heading>Charities</Heading>
+          <p className="mt-2 text-sm/6 text-zinc-500">
+            Create a new charity or manage existing ones. Select a charity to view details and start creating raffles. Use the search bar to find specific charities.
+          </p>
           <div className="mt-4 flex max-w-xl gap-4">
             <InputGroup>
               <Input

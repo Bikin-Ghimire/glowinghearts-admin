@@ -55,8 +55,9 @@ export default function PrizesStep({ prizes, setPrizes, salesStartDate }: any) {
                   onChange={(e) => updatePrize(index, 'type', parseInt(e.target.value))}
                   className="block w-full rounded-md border p-2"
                 >
-                  <option value={1}>50/50</option>
-                  <option value={2}>Progressive</option>
+                  <option value={1}>50/50 Cash</option>
+                  <option value={2}>Early Bird</option>
+                  <option value={3}>Prize Raffle</option>
                 </select>
               </div>
 

@@ -1,16 +1,53 @@
+import { authOptions } from '@/app/api/auth/[...nextauth]/route' // ✅ adjust if path differs
+import { getTokenFromSession } from '@/hooks/use-session-token'
 import { sendEmail } from '@/lib/email' // your email utility
 import { stripe } from '@/lib/utils'
+import { getServerSession } from 'next-auth/next'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, charityName } = await req.json()
+    const session = await getServerSession(authOptions)
+    const token = await getTokenFromSession(session)
+
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { email, charityName, charityId } = await req.json()
+
+    if (!email || !charityId) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
 
     // 1. Create the Connect account
     const account = await stripe.accounts.create({
       type: 'express',
       email,
       business_type: 'non_profit',
+    })
+
+    const charityRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Charities/${charityId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    const charity = await charityRes.json()
+
+    // TODO: Save account.id to DB using your internal API
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Charities/${charityId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        VC_CharityDesc: charity.VC_CharityDesc,
+        Txt_CharityDesc: charity.Txt_CharityDesc,
+        VC_ContactFirstName: charity.VC_ContactFirstName,
+        VC_ContactLastName: charity.VC_ContactLastName,
+        VC_ContactEmail: charity.VC_ContactEmail,
+        VC_ContactPhone: charity.VC_ContactPhone,
+        VC_CharityKey: account.id,
+      }),
     })
 
     // 2. Generate the onboarding link
@@ -25,10 +62,10 @@ export async function POST(req: NextRequest) {
     // 3. Send the email
     await sendEmail({
       to: email,
-      subject: `Complete your Stripe onboarding for ${charityName}`,
+      subject: `Complete your Stripe onboarding for Glowing Hearts Fundraising`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #eee; border-radius: 8px;">
-        <h2 style="color: #333;">Welcome to Matt's Mats Partner Portal</h2>
+        <h2 style="color: #333;">Welcome to Glowing Hearts Fundraising Portal</h2>
         <p style="font-size: 16px; color: #444;">
             Hi there,
         </p>

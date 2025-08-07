@@ -10,6 +10,7 @@ export function useRaffleDetails(Guid_RaffleId: string) {
   const [prizes, setPrizes] = useState<any[]>([])
   const [buyIns, setBuyIns] = useState<any[]>([])
   const [purchases, setPurchases] = useState<any[]>([])
+  const [logs, setLogs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -19,11 +20,14 @@ export function useRaffleDetails(Guid_RaffleId: string) {
     try {
       const data = await fetchRaffleDetail(session, Guid_RaffleId)
 
+      console.log('Logs received from API:', data.logs)
+
       setRaffle(data.raffle)
       setBannerUrl(data.bannerUrl)
       setPrizes(data.prizes)
       setBuyIns(data.buyIns)
       setPurchases(data.purchases)
+      setLogs(data.logs)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -42,6 +46,7 @@ export function useRaffleDetails(Guid_RaffleId: string) {
     prizes,
     buyIns,
     purchases,
+    logs,
     loading,
     error,
   }

@@ -1,9 +1,10 @@
 // hooks/useCreateRaffle.ts
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import { getTokenFromSession } from './use-session-token'
 
 export function useCreateRaffle({
-  selectedCharity,
+  charityId,
   licenseNo,
   raffleName,
   raffleLocation,
@@ -15,7 +16,7 @@ export function useCreateRaffle({
   prizes,
   bundles,
 }: {
-  selectedCharity: any
+  charityId: string
   licenseNo: string
   raffleName: string
   raffleLocation: string
@@ -45,18 +46,19 @@ export function useCreateRaffle({
   }
 
   const handleCreate = async () => {
-    if (!selectedCharity?.Guid_CharityId) return alert("No charity selected")
+    if (!charityId) return alert("No charity ID provided")
 
     // Get JWT
-    const jwtRes = await fetch('/api/create-jwt', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        VC_Email: session?.user?.email,
-        VC_Pwd: session?.user?.password,
-      }),
-    })
-    const { token } = await jwtRes.json()
+    // const jwtRes = await fetch('/api/create-jwt', {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify({
+    //     VC_Email: session?.user?.email,
+    //     VC_Pwd: session?.user?.password,
+    //   }),
+    // })
+    // const { token } = await jwtRes.json()
+    const token = await getTokenFromSession(session)
 
     const body = {
       VC_LicenseNumb: licenseNo,
@@ -66,7 +68,7 @@ export function useCreateRaffle({
       Dt_SaleClose: salesEndDate,
     }
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Raffle/${selectedCharity.Guid_CharityId}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Raffle/${charityId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(body),
