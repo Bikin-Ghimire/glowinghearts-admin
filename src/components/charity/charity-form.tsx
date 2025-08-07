@@ -2,11 +2,11 @@
 import dynamic from 'next/dynamic'
 const ReactQuill = dynamic(() => import('react-quill'), { ssr: false })
 
+import { useCharityDetails } from '@/hooks/use-charity-details'
 import { Dialog } from '@headlessui/react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { useCharityDetails } from '@/hooks/use-charity-details'
 
 interface CharityFormProps {
   Guid_CharityId?: string
@@ -16,6 +16,7 @@ export default function CharityForm({ Guid_CharityId }: CharityFormProps) {
   const { data: session, status } = useSession()
   const router = useRouter()
 
+  const [createdCharityId, setCreatedCharityId] = useState('')
   const [formData, setFormData] = useState({
     VC_CharityDesc: '',
     Txt_CharityDesc: '',
@@ -33,20 +34,20 @@ export default function CharityForm({ Guid_CharityId }: CharityFormProps) {
 
   const { charity, bannerUrl, loading: charityLoading } = useCharityDetails(Guid_CharityId || '')
   useEffect(() => {
-  if (isEditMode && charity) {
-    setFormData({
-      VC_CharityDesc: charity.VC_CharityDesc || '',
-      Txt_CharityDesc: charity.Txt_CharityDesc || '',
-      VC_ContactFirstName: charity.VC_ContactFirstName || '',
-      VC_ContactLastName: charity.VC_ContactLastName || '',
-      VC_ContactEmail: charity.VC_ContactEmail || '',
-      VC_ContactPhone: charity.VC_ContactPhone || '',
-      VC_CharityKey: charity.VC_CharityKey || '',
-    })
+    if (isEditMode && charity) {
+      setFormData({
+        VC_CharityDesc: charity.VC_CharityDesc || '',
+        Txt_CharityDesc: charity.Txt_CharityDesc || '',
+        VC_ContactFirstName: charity.VC_ContactFirstName || '',
+        VC_ContactLastName: charity.VC_ContactLastName || '',
+        VC_ContactEmail: charity.VC_ContactEmail || '',
+        VC_ContactPhone: charity.VC_ContactPhone || '',
+        VC_CharityKey: charity.VC_CharityKey || '',
+      })
 
-    setLogoURL(bannerUrl || '')
-  }
-}, [charity, bannerUrl, isEditMode])
+      setLogoURL(bannerUrl || '')
+    }
+  }, [charity, bannerUrl, isEditMode])
 
   const getJWTToken = async () => {
     const jwtRes = await fetch('/api/create-jwt', {
@@ -69,7 +70,6 @@ export default function CharityForm({ Guid_CharityId }: CharityFormProps) {
       let charityId = Guid_CharityId
 
       if (!isEditMode) {
-        // Create
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Charities`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -78,7 +78,12 @@ export default function CharityForm({ Guid_CharityId }: CharityFormProps) {
         const data = await res.json()
         charityId = data?.Guid_CharityId
         if (!charityId) throw new Error('Failed to create charity')
+      } else {
+        charityId = Guid_CharityId
       }
+
+      // Always set createdCharityId for redirect
+      setCreatedCharityId(charityId!)
 
       // Update
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Charities/${charityId}`, {
@@ -106,8 +111,8 @@ export default function CharityForm({ Guid_CharityId }: CharityFormProps) {
   }
 
   if (isEditMode && charityLoading) {
-  return <p>Loading charity...</p>
-}
+    return <p>Loading charity...</p>
+  }
 
   return (
     <form onSubmit={handleSubmit}>
@@ -150,7 +155,7 @@ export default function CharityForm({ Guid_CharityId }: CharityFormProps) {
               </div>
             </div>
 
-            <div className="sm:col-span-4">
+            {/* <div className="sm:col-span-4">
               <label htmlFor="charity-key" className="block text-sm/6 font-medium text-gray-900">
                 Charity Key
               </label>
@@ -165,7 +170,7 @@ export default function CharityForm({ Guid_CharityId }: CharityFormProps) {
                   className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
                 />
               </div>
-            </div>
+            </div> */}
 
             <div className="sm:col-span-4">
               <label htmlFor="charity-description" className="block text-sm/6 font-medium text-gray-900">
@@ -275,7 +280,7 @@ export default function CharityForm({ Guid_CharityId }: CharityFormProps) {
         open={showSuccess}
         onClose={() => {
           setShowSuccess(false)
-          router.push(''/charities/' + charity.Guid_CharityId')
+          router.push('/charities/' + createdCharityId)
         }}
         className="relative z-50"
       >
@@ -292,7 +297,7 @@ export default function CharityForm({ Guid_CharityId }: CharityFormProps) {
               <button
                 onClick={() => {
                   setShowSuccess(false)
-                  router.push('/charities/' + charity.Guid_CharityId)
+                  router.push('/charities/' + createdCharityId)
                 }}
                 className="rounded bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
               >

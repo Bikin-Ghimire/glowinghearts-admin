@@ -9,28 +9,41 @@ export async function fetchRaffleDetail(session: any, Guid_RaffleId: string) {
     'Content-Type': 'application/json',
   }
 
-  const [raffleRes, bannerRes, prizesRes, buyInsRes, purchasesRes] = await Promise.all([
+  const [raffleRes, bannerRes, prizesRes, buyInsRes, purchasesRes, logsRes] = await Promise.all([
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/Raffle/${Guid_RaffleId}`, { headers }),
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/Banner/${Guid_RaffleId}/50`, { headers }),
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/Prizes/${Guid_RaffleId}`, { headers }),
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/BuyIns/${Guid_RaffleId}`, { headers }),
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/Report/Tickets/${Guid_RaffleId}`, { headers }),
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/Report/Tickets/${Guid_RaffleId}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({}), // pass required body here, if needed
+    }),
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/Report/Except_Raffle/${Guid_RaffleId}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({}), // pass required body here, if needed
+    }),
   ])
 
-  const [raffleData, bannerData, prizesData, buyInsData, purchasesData] = await Promise.all([
+  const [raffleData, bannerData, prizesData, buyInsData, purchasesData, logsData] = await Promise.all([
     raffleRes.json(),
     bannerRes.ok ? bannerRes.json() : null,
     prizesRes.ok ? prizesRes.json() : [],
     buyInsRes.ok ? buyInsRes.json() : [],
     purchasesRes.ok ? purchasesRes.json() : [],
+    logsRes.ok ? logsRes.json() : [],
   ])
+
+  console.log('logsData:', logsData)
 
   return {
     raffle: Array.isArray(raffleData?.obj_Raffles) ? raffleData.obj_Raffles[0] : null,
-    bannerUrl: Array.isArray(bannerData?.obj_Banner) ? bannerData.obj_Banner[0]?.VC_BannerLocation ?? null : null,
+    bannerUrl: Array.isArray(bannerData?.obj_Banner) ? (bannerData.obj_Banner[0]?.VC_BannerLocation ?? null) : null,
     prizes: Array.isArray(prizesData?.obj_Prizes) ? prizesData.obj_Prizes : [],
     buyIns: Array.isArray(buyInsData?.obj_BuyIns) ? buyInsData.obj_BuyIns : [],
     purchases: Array.isArray(purchasesData?.obj_TicketList) ? purchasesData.obj_TicketList : [],
+    logs: Array.isArray(logsData?.obj_UpdatesList) ? logsData.obj_UpdatesList : [],
   }
 }
 
@@ -59,9 +72,7 @@ export async function updateRaffleStatus({
 
   updateFn((prev: any) => {
     if (Array.isArray(prev)) {
-      return prev.map((c) =>
-        c.Guid_RaffleId === id ? { ...c, Int_DrawStatus: newStatus } : c
-      )
+      return prev.map((c) => (c.Guid_RaffleId === id ? { ...c, Int_DrawStatus: newStatus } : c))
     } else if (prev?.Guid_RaffleId === id) {
       return { ...prev, Int_DrawStatus: newStatus }
     }

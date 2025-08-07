@@ -1,7 +1,6 @@
 'use client'
 
-import { signOut } from 'next-auth/react'
-import { useSession } from 'next-auth/react'
+import { signOut, useSession } from 'next-auth/react'
 
 import { Avatar } from '@/components/avatar'
 import {
@@ -32,19 +31,15 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   Cog8ToothIcon,
-  LightBulbIcon,
-  PlusIcon,
-  ShieldCheckIcon,
   UserCircleIcon,
 } from '@heroicons/react/16/solid'
 import {
   Cog6ToothIcon,
   HomeIcon,
-  TrophyIcon,
   QuestionMarkCircleIcon,
   SparklesIcon,
-  Square2StackIcon,
   TicketIcon,
+  TrophyIcon,
 } from '@heroicons/react/20/solid'
 import { usePathname } from 'next/navigation'
 
@@ -89,7 +84,7 @@ export function ApplicationLayout({
           <NavbarSection>
             <Dropdown>
               <DropdownButton as={NavbarItem}>
-                <Avatar src="/users/erica.jpg" square />
+                <UserCircleIcon className="size-10 text-zinc-500 dark:text-zinc-400" />
               </DropdownButton>
               <AccountDropdownMenu anchor="bottom end" />
             </Dropdown>
@@ -106,10 +101,6 @@ export function ApplicationLayout({
                 <ChevronDownIcon />
               </DropdownButton>
               <DropdownMenu className="min-w-80 lg:min-w-64" anchor="bottom start">
-                <DropdownItem href="/settings">
-                  <Cog8ToothIcon />
-                  <DropdownLabel>Settings</DropdownLabel>
-                </DropdownItem>
                 <DropdownDivider />
                 <DropdownItem href="#">
                   <Avatar slot="icon" src="/teams/catalyst.svg" />
@@ -129,40 +120,15 @@ export function ApplicationLayout({
                 <TrophyIcon />
                 <SidebarLabel>Charity</SidebarLabel>
               </SidebarItem>
-              <SidebarItem href="/raffles" current={pathname.startsWith('/raffles')}>
-                <TicketIcon />
-                <SidebarLabel>Raffle</SidebarLabel>
-              </SidebarItem>
               <SidebarDivider />
               <SidebarItem href="/users" current={pathname.startsWith('/users')}>
                 <UserCircleIcon />
                 <SidebarLabel>Users</SidebarLabel>
               </SidebarItem>
-              <SidebarItem href="/settings" current={pathname.startsWith('/settings')}>
-                <Cog6ToothIcon />
-                <SidebarLabel>Settings</SidebarLabel>
-              </SidebarItem>
-            </SidebarSection>
-
-            <SidebarSection className="max-lg:hidden">
-              <SidebarHeading>Best Performing Raffles</SidebarHeading>
-              {events.map((event) => (
-                <SidebarItem key={event.id} href={event.url}>
-                  {event.name}
-                </SidebarItem>
-              ))}
-            </SidebarSection>
-
-            <SidebarSpacer />
-
-            <SidebarSection>
-              <SidebarItem href="#">
-                <QuestionMarkCircleIcon />
-                <SidebarLabel>Support</SidebarLabel>
-              </SidebarItem>
-              <SidebarItem href="#">
+              <SidebarDivider />
+              <SidebarItem href="/reports" current={pathname.startsWith('/reports')}>
                 <SparklesIcon />
-                <SidebarLabel>Changelog</SidebarLabel>
+                <SidebarLabel>Reports</SidebarLabel>
               </SidebarItem>
             </SidebarSection>
           </SidebarBody>
@@ -173,7 +139,9 @@ export function ApplicationLayout({
                 <span className="flex min-w-0 items-center gap-3">
                   <UserCircleIcon className="size-10 text-zinc-500 dark:text-zinc-400" />
                   <span className="min-w-0">
-                    <span className="block truncate text-sm/5 font-medium text-zinc-950 dark:text-white">{user?.name || 'User'}</span>
+                    <span className="block truncate text-sm/5 font-medium text-zinc-950 dark:text-white">
+                      {user?.name || 'User'}
+                    </span>
                     <span className="block truncate text-xs/5 font-normal text-zinc-500 dark:text-zinc-400">
                       {user?.email || 'user@example.com'}
                     </span>

@@ -4,9 +4,10 @@ import { Button } from '@/components/button'; // Adjust the path as needed
 interface Props {
   email: string;
   charityName: string;
+  charityId: string;
 }
 
-export function SendOnboardingButton({ email, charityName }: Props) {
+export function SendOnboardingButton({ email, charityName, charityId }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,7 +19,7 @@ export function SendOnboardingButton({ email, charityName }: Props) {
       const res = await fetch('/api/send-onboarding-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, charityName }),
+        body: JSON.stringify({ email, charityName, charityId }),
       });
 
       const json = await res.json();
@@ -33,7 +34,7 @@ export function SendOnboardingButton({ email, charityName }: Props) {
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div>
       <Button onClick={handleClick} disabled={loading}>
         {loading ? 'Sending...' : 'Send Stripe Onboarding Email'}
       </Button>

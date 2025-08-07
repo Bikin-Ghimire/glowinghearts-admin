@@ -18,6 +18,7 @@ export default function RafflePage({ params: { Guid_RaffleId } }: Params) {
     prizes,
     buyIns,
     purchases,
+    logs,
     loading,
     error,
   } = useRaffleDetails(Guid_RaffleId)
@@ -37,7 +38,7 @@ export default function RafflePage({ params: { Guid_RaffleId } }: Params) {
         onDeactivate={() => handleDeactivate(raffle.Guid_RaffleId)}
       />
       <RaffleStats raffle={raffle} />
-      <RaffleTabs raffle={raffle} purchases={purchases} prizes={prizes} buyIns={buyIns} />
+      <RaffleTabs raffle={raffle} logs={logs} purchases={purchases} prizes={prizes} buyIns={buyIns} />
     </>
   )
 }

@@ -1,11 +1,11 @@
 // components/RaffleHeader.tsx
 'use client'
 
-import { format } from 'date-fns'
 import { ChevronLeftIcon } from '@heroicons/react/16/solid'
+import { format } from 'date-fns'
 import { Badge } from '..//../badge'
-import { Heading } from '..//../heading'
 import { Button } from '..//../button'
+import { Heading } from '..//../heading'
 import { Link } from '..//../link'
 
 type Props = {

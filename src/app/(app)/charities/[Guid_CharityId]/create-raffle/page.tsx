@@ -1,7 +1,6 @@
 'use client'
 
 import BundlesStep from '@/components/raffle/create-form/bundle-step'
-import CharityStep from '@/components/raffle/create-form/charity-step'
 import RaffleDetailsStep from '@/components/raffle/create-form/details-step'
 import PrizesStep from '@/components/raffle/create-form/prizes-step'
 import ReviewStep from '@/components/raffle/create-form/review-step'
@@ -9,29 +8,17 @@ import RaffleStepsNav from '@/components/raffle/create-form/steps-nav'
 import StepNavigationButtons from '@/components/raffle/create-form/steps-nav-buttons'
 import { useCreateRaffle } from '@/hooks/use-create-raffle'
 import { useRaffleForm } from '@/hooks/use-raffle-form'
-import { getCharities } from '@/lib/charities'
 import { useSession } from 'next-auth/react'
-import { useEffect } from 'react'
+import { useParams } from 'next/navigation'
 
 export default function CreateRafflePage() {
   const { data: session } = useSession()
+  const params = useParams()
+  const charityId = params?.Guid_CharityId as string
   const form = useRaffleForm()
-  const { handleCreate } = useCreateRaffle(form)
-
-  // Fetch charities on mount using JWT
-  useEffect(() => {
-    async function fetchAndSetCharities() {
-      if (!session) return
-      const list = await getCharities(session)
-      const activeCharities = list.filter((c) => c.Int_CharityStatus === 1)
-      form.setCharities(activeCharities)
-    }
-
-    fetchAndSetCharities().catch(console.error)
-  }, [session])
+  const { handleCreate } = useCreateRaffle({ ...form, charityId })
 
   const steps = [
-    <CharityStep {...form} />,
     <RaffleDetailsStep {...form} />,
     <PrizesStep {...form} />,
     <BundlesStep {...form} />,
@@ -42,9 +29,8 @@ export default function CreateRafflePage() {
     let canGo = true
 
     for (let i = 0; i < index; i++) {
-      if (i === 0 && !form.selectedCharity) canGo = false
       if (
-        i === 1 &&
+        i === 0 &&
         !(
           form.licenseNo &&
           form.raffleName &&
@@ -57,7 +43,7 @@ export default function CreateRafflePage() {
       )
         canGo = false
       if (
-        i === 2 &&
+        i === 1 &&
         !form.prizes.every(
           (p) =>
             p.name && p.amount && p.drawDate && p.drawDate !== '0000-00-00 00:00:00' && p.drawDate > form.salesStartDate
@@ -65,7 +51,7 @@ export default function CreateRafflePage() {
       )
         canGo = false
       if (
-        i === 3 &&
+        i === 2 &&
         !form.bundles.every(
           (b) =>
             b.numberOfTickets && parseInt(b.numberOfTickets) > 0 && b.price && parseFloat(b.price) > 0 && b.description

@@ -35,10 +35,9 @@ export default function StepNavigationButtons({
   )
 
   const isNextDisabled =
-    currentStepIndex === 0 && !selectedCharity ||
-    currentStepIndex === 1 && !raffleDetailsValid ||
-    currentStepIndex === 2 && !prizesValid ||
-    currentStepIndex === 3 && !bundlesValid
+    currentStepIndex === 0 && !raffleDetailsValid ||
+    currentStepIndex === 1 && !prizesValid ||
+    currentStepIndex === 2 && !bundlesValid
 
   return (
     <div className="mt-8 flex justify-between">
@@ -53,10 +52,10 @@ export default function StepNavigationButtons({
         Previous
       </button>
 
-      {currentStepIndex < 4 ? (
+      {currentStepIndex < 3 ? (
         <button
           type="button"
-          onClick={() => setCurrentStepIndex((prev: number) => Math.min(4, prev + 1))}
+          onClick={() => setCurrentStepIndex((prev: number) => Math.min(3, prev + 1))}
           disabled={isNextDisabled}
           className={`rounded-md px-4 py-2 ${
             isNextDisabled ? 'cursor-not-allowed bg-gray-300' : 'bg-indigo-600 text-white'

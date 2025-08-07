@@ -4,15 +4,26 @@
 export default function BundlesStep({ bundles, setBundles }: any) {
   const updateBundle = (index: number, field: string, value: any) => {
     setBundles((prev: any[]) =>
-      prev.map((b, i) => (i === index ? { ...b, [field]: value } : b))
+      prev.map((b, i) => {
+        if (i !== index) return b
+
+        const updatedBundle = { ...b, [field]: value }
+
+        const numTickets = Number(field === 'numberOfTickets' ? value : updatedBundle.numberOfTickets)
+        const price = Number(field === 'price' ? value : updatedBundle.price)
+
+        if (numTickets && price >= 0) {
+          const ticketLabel = numTickets === 1 ? 'ticket' : 'tickets'
+          updatedBundle.description = `${numTickets} ${ticketLabel} for $${price}`
+        }
+
+        return updatedBundle
+      })
     )
   }
 
   const addBundle = () => {
-    setBundles((prev: any[]) => [
-      ...prev,
-      { numberOfTickets: '', price: '', description: '' },
-    ])
+    setBundles((prev: any[]) => [...prev, { numberOfTickets: '', price: '', description: '' }])
   }
 
   const removeBundle = (index: number) => {
@@ -44,7 +55,12 @@ export default function BundlesStep({ bundles, setBundles }: any) {
                   type="number"
                   min="1"
                   value={bundle.numberOfTickets}
-                  onChange={(e) => updateBundle(index, 'numberOfTickets', e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    if (value === '' || /^\d+$/.test(value)) {
+                      updateBundle(index, 'numberOfTickets', value)
+                    }
+                  }}
                   placeholder="e.g., 50"
                   className="block w-full rounded-md border p-2"
                 />
@@ -57,7 +73,12 @@ export default function BundlesStep({ bundles, setBundles }: any) {
                   min="0"
                   step="0.01"
                   value={bundle.price}
-                  onChange={(e) => updateBundle(index, 'price', e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                      updateBundle(index, 'price', value)
+                    }
+                  }}
                   placeholder="e.g., 20.00"
                   className="block w-full rounded-md border p-2"
                 />

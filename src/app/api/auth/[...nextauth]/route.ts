@@ -17,7 +17,7 @@ export const authOptions: NextAuthOptions = {
         const { email, password } = credentials as { email: string; password: string }
         const rememberMe = cookies().get('rememberMe')?.value === 'true'
 
-        if (email === '210d54a3-5eb2-11f0-8511-3cecef59123c' && password === 'gogogogo') {
+        if (email === 'TEMPADMIN' && password === 'gogogogo') {
           return { id: '1', name: 'Admin', email, rememberMe, password}
         }
 

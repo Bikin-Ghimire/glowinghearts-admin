@@ -12,7 +12,7 @@ type Props = {
 
 export function RaffleInfoTab({ raffle, prizes, buyIns }: Props) {
   return (
-    <div className="text-sm text-gray-500 space-y-8">
+    <div className="mt-5 text-sm text-gray-500 space-y-8">
       {/* Game Details */}
       <section>
         <h3 className="text-base/7 font-semibold text-gray-900">Game Details</h3>

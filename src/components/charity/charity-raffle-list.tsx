@@ -25,7 +25,7 @@ export function CharityRaffleList({ charity, raffles }: { charity: any; raffles:
       <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
         <Heading>Recent Raffles</Heading>
         {charity.Int_CharityStatus === 1 ? (
-          <Button color="fuchsia" href="/raffles/create-raffle" className="flex items-center">
+          <Button color="fuchsia" href={`/charities/${charity.Guid_CharityId}/create-raffle`} className="flex items-center">
             <PlusIcon className="mr-2" />
             CREATE RAFFLE
           </Button>
@@ -94,7 +94,7 @@ export function CharityRaffleList({ charity, raffles }: { charity: any; raffles:
                 return (
                   <TableRow
                     key={raffle.Guid_RaffleId}
-                    href={`/raffles/${raffle.Guid_RaffleId}`}
+                    href={`/charities/${raffle.Guid_CharityId}/${raffle.Guid_RaffleId}`}
                     title={`Raffle #${raffle.Guid_RaffleId}`}
                   >
                     <TableCell>{raffle.VC_RaffleName}</TableCell>
