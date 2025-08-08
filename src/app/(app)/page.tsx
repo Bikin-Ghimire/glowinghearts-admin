@@ -21,7 +21,7 @@ export default function Home() {
   return (
     <>
       <div className="mt-8 flex items-end justify-between">
-        <Heading>Good afternoon, {user?.name || 'User'}</Heading>
+        <Heading>Hello, {user?.name || 'User'}</Heading>
         <div>
           <Button color="fuchsia" href="/charities" className="flex items-center">
             <PlusIcon className="mr-2" />

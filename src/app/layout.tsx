@@ -3,8 +3,8 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: {
-    template: '%s - Catalyst',
-    default: 'Catalyst',
+    template: '%s - Glowing Hearts Admin',
+    default: 'Glowing Hearts Admin',
   },
   description: '',
 }
