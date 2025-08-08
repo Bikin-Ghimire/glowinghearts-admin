@@ -29,6 +29,9 @@ export function useRaffleForm() {
     },
   ])
 
+  const [prizeClaimPeriod, setPrizeClaimPeriod] = useState(30)
+  const [prizeTimeFrame, setPrizeTimeFrame] = useState(3)
+
   const [bundles, setBundles] = useState([
     { numberOfTickets: '', price: '', description: '' },
   ])
@@ -63,6 +66,10 @@ export function useRaffleForm() {
     setSalesEndDate,
     bannerLink,
     setBannerLink,
+    prizeClaimPeriod,
+    setPrizeClaimPeriod,
+    prizeTimeFrame,
+    setPrizeTimeFrame,
 
     // Prizes
     prizes,

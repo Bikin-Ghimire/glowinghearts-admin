@@ -13,6 +13,8 @@ export function useCreateRaffle({
   raffleDescription,
   raffleRules,
   bannerLink,
+  prizeClaimPeriod,
+  prizeTimeFrame,
   prizes,
   bundles,
 }: {
@@ -25,6 +27,8 @@ export function useCreateRaffle({
   raffleDescription: string
   raffleRules: string
   bannerLink: string
+  prizeClaimPeriod: number
+  prizeTimeFrame: number
   prizes: any[]
   bundles: any[]
 }) {
@@ -47,17 +51,6 @@ export function useCreateRaffle({
 
   const handleCreate = async () => {
     if (!charityId) return alert("No charity ID provided")
-
-    // Get JWT
-    // const jwtRes = await fetch('/api/create-jwt', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({
-    //     VC_Email: session?.user?.email,
-    //     VC_Pwd: session?.user?.password,
-    //   }),
-    // })
-    // const { token } = await jwtRes.json()
     const token = await getTokenFromSession(session)
 
     const body = {
@@ -66,6 +59,8 @@ export function useCreateRaffle({
       VC_RaffleLocation: raffleLocation,
       Dt_SaleOpen: salesStartDate,
       Dt_SaleClose: salesEndDate,
+      Int_TimeFrame: prizeTimeFrame,
+      Int_UnClaimedTimeOut: prizeClaimPeriod,
     }
 
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Raffle/${charityId}`, {
