@@ -25,7 +25,6 @@ import {
   SidebarSpacer,
 } from '@/components/sidebar'
 import { SidebarLayout } from '@/components/sidebar-layout'
-import { getEvents } from '@/data'
 import {
   ArrowRightStartOnRectangleIcon,
   ChevronDownIcon,
@@ -65,10 +64,8 @@ function AccountDropdownMenu({ anchor }: { anchor: 'top start' | 'bottom end' })
 }
 
 export function ApplicationLayout({
-  events,
   children,
 }: {
-  events: Awaited<ReturnType<typeof getEvents>>
   children: React.ReactNode
 }) {
   let pathname = usePathname()
@@ -96,14 +93,14 @@ export function ApplicationLayout({
           <SidebarHeader>
             <Dropdown>
               <DropdownButton as={SidebarItem}>
-                <Avatar src="/teams/catalyst.svg" />
+                <Avatar src="/teams/Dark_Icon.svg" />
                 <SidebarLabel>Dashboard</SidebarLabel>
                 <ChevronDownIcon />
               </DropdownButton>
               <DropdownMenu className="min-w-80 lg:min-w-64" anchor="bottom start">
                 <DropdownDivider />
                 <DropdownItem href="#">
-                  <Avatar slot="icon" src="/teams/catalyst.svg" />
+                  <Avatar slot="icon" src="/teams/Dark_Icon.svg" />
                   <DropdownLabel>Visit Website</DropdownLabel>
                 </DropdownItem>
               </DropdownMenu>
