@@ -1,11 +1,9 @@
 // components/raffle/PrizesStep.tsx
 'use client'
 
-export default function PrizesStep({ prizes, setPrizes, salesStartDate }: any) {
+export default function PrizesStep({ prizes, setPrizes, prizeClaimPeriod, setPrizeClaimPeriod, salesStartDate }: any) {
   const updatePrize = (index: number, field: string, value: any) => {
-    setPrizes((prev: any[]) =>
-      prev.map((p, i) => (i === index ? { ...p, [field]: value } : p))
-    )
+    setPrizes((prev: any[]) => prev.map((p, i) => (i === index ? { ...p, [field]: value } : p)))
   }
 
   const addPrize = () => {
@@ -116,6 +114,19 @@ export default function PrizesStep({ prizes, setPrizes, salesStartDate }: any) {
       >
         + Add Prize
       </button>
+
+      <label className="mt-5 mb-1 block text-sm font-medium text-gray-700">Prize Claim Period</label>
+      <input
+        type="number"
+        min="0"
+        value={prizeClaimPeriod}
+        onChange={(e) => {
+          const value = Math.max(0, Number(e.target.value))
+          setPrizeClaimPeriod(value)
+        }}
+        placeholder="Enter number of days (e.g., 30)"
+        className="mb-4 block w-full rounded-md border p-2"
+      />
     </div>
   )
 }

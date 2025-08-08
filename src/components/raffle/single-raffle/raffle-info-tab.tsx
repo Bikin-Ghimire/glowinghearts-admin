@@ -37,6 +37,9 @@ export function RaffleInfoTab({ raffle, prizes, buyIns }: Props) {
       <section>
         <h3 className="text-base/7 font-semibold text-gray-900">Prize Details</h3>
         <div className="overflow-x-auto mt-2">
+          <p><b>Prize Claim Period:</b> {raffle.Int_UnClaimedTimeOut} days</p>
+        </div>
+        <div className="overflow-x-auto mt-3">
           <table className="min-w-full divide-y divide-gray-300">
             <thead className="bg-gray-50">
               <tr>
