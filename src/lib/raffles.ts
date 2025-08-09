@@ -95,3 +95,19 @@ export async function activateRaffle(id: string, token: string) {
 
   return res.json()
 }
+
+export async function deactivateRaffle(id: string, token: string) {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Raffle/DeActivate/${id}`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  if (!res.ok) {
+    const errText = await res.text()
+    throw new Error(`Deactivate failed: ${res.status} - ${errText}`)
+  }
+
+  return res.json()
+}

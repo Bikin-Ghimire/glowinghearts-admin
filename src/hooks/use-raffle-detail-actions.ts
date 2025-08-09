@@ -1,5 +1,5 @@
 
-import { activateRaffle, updateRaffleStatus } from '@/lib/raffles'
+import { activateRaffle, deactivateRaffle, updateRaffleStatus } from '@/lib/raffles'
 
 export function useRaffleDetailActions(session: any, setRaffle: Function) {
   return {
@@ -7,7 +7,7 @@ export function useRaffleDetailActions(session: any, setRaffle: Function) {
       updateRaffleStatus({
         session,
         id,
-        newStatus: 1,
+        newStatus: 2,
         updateFn: setRaffle,
         apiFn: activateRaffle,
       }),
@@ -15,7 +15,7 @@ export function useRaffleDetailActions(session: any, setRaffle: Function) {
       updateRaffleStatus({
         session,
         id,
-        newStatus: 2,
+        newStatus: 6,
         updateFn: setRaffle,
         apiFn: deactivateRaffle,
       }),
