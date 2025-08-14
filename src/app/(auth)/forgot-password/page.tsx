@@ -23,12 +23,6 @@ export default function Login() {
       <Button type="submit" className="w-full">
         Reset password
       </Button>
-      <Text>
-        Don’t have an account?{' '}
-        <TextLink href="/register">
-          <Strong>Sign up</Strong>
-        </TextLink>
-      </Text>
     </form>
   )
 }

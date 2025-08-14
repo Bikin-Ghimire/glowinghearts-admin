@@ -17,6 +17,7 @@ interface Props {
 
 export default function CharityListView({ charities, refetchCharities, session }: Props) {
   const [searchTerm, setSearchTerm] = useState('')
+  const user = session?.user
 
   const filteredCharities = charities.filter((charity) =>
     charity.VC_CharityDesc?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -39,10 +40,12 @@ export default function CharityListView({ charities, refetchCharities, session }
             </InputGroup>
           </div>
         </div>
+        { [1, 2].includes(user?.charityAccess?.[0]?.Int_UserAccess ?? 0) && (
         <Button href="/charities/create-charity">
           <PlusIcon className="mr-2" />
           CREATE CHARITY
         </Button>
+        )}
       </div>
 
       {filteredCharities.length === 0 ? (

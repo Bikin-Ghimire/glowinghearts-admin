@@ -90,7 +90,7 @@ export function RaffleHeader({ raffle, bannerUrl, onActivate, onDeactivate }: Pr
               Edit Raffle Information
             </Button>
           )}
-          {raffle.Int_DrawStatus === 6 && (
+          {raffle.Int_DrawStatus === 6 || raffle.Int_DrawStatus === 1 && (
             <Button color="lime" onClick={onActivate} className="flex items-center">
               Activate Raffle
             </Button>

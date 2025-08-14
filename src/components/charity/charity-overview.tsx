@@ -23,6 +23,7 @@ export function CharityOverview({
   handleDeactivate: (id: string) => void
 }) {
   const { data: session } = useSession()
+  const user = session?.user
   const [charityKey, setCharityKey] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -82,6 +83,7 @@ export function CharityOverview({
             <div className="mt-2 text-sm/6 text-zinc-500">Charity Key: {charity.VC_CharityKey}</div>
           </div>
         </div>
+        { [1, 2].includes(user?.charityAccess?.[0]?.Int_UserAccess ?? 0) && (
         <div className="flex gap-4">
           {charity.Int_CharityStatus !== 1 ? (
             <Button outline href={`/charities/${charity.Guid_CharityId}/edit`}>
@@ -129,6 +131,7 @@ export function CharityOverview({
             </Button>
           )}
         </div>
+        )}
       </div>
 
       {!charity.VC_CharityKey && (

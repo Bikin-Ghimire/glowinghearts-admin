@@ -21,13 +21,15 @@ export default function Home() {
   return (
     <>
       <div className="mt-8 flex items-end justify-between">
-        <Heading>Hello, {user?.name || 'User'}</Heading>
+        <Heading>Greetings!</Heading>
+        { [1, 2].includes(user?.charityAccess?.[0]?.Int_UserAccess ?? 0) && (
         <div>
           <Button color="fuchsia" href="/charities" className="flex items-center">
             <PlusIcon className="mr-2" />
             GET STARTED
           </Button>
         </div>
+        )}
       </div>
 
       <div className="mt-8 flex items-end justify-between">

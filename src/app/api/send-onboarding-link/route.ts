@@ -40,15 +40,16 @@ export async function POST(req: NextRequest) {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        VC_CharityDesc: charity.VC_CharityDesc,
-        Txt_CharityDesc: charity.Txt_CharityDesc,
-        VC_ContactFirstName: charity.VC_ContactFirstName,
-        VC_ContactLastName: charity.VC_ContactLastName,
-        VC_ContactEmail: charity.VC_ContactEmail,
-        VC_ContactPhone: charity.VC_ContactPhone,
+        VC_CharityDesc: charity?.obj_Charities[0].VC_CharityDesc,
+        Txt_CharityDesc: charity?.obj_Charities[0].Txt_CharityDesc,
+        VC_ContactFirstName: charity?.obj_Charities[0].VC_ContactFirstName,
+        VC_ContactLastName: charity?.obj_Charities[0].VC_ContactLastName,
+        VC_ContactEmail: charity?.obj_Charities[0].VC_ContactEmail,
+        VC_ContactPhone: charity?.obj_Charities[0].VC_ContactPhone,
         VC_CharityKey: account.id,
       }),
     })
+    console.log('API returned:', charity)
 
     // 2. Generate the onboarding link
     const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_BASE_URL

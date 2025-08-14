@@ -1,38 +1,54 @@
+// middleware.ts
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
+
+const PUBLIC_PATHS = [
+  '/login',
+  '/forgot-password',
+  // add more public routes here if needed
+]
+
+function isPublicPath(pathname: string) {
+  return PUBLIC_PATHS.some(p => pathname.startsWith(p))
+}
 
 export async function middleware(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
   const { pathname } = req.nextUrl
 
-  const res = NextResponse.next()
+  // Decide the base response first (next or redirects)
+  let response: NextResponse
 
-  // ✅ Sync rememberMe cookie
+  if (token && isPublicPath(pathname)) {
+    // Logged-in user visiting a public auth page → send to app
+    response = NextResponse.redirect(new URL('/', req.url))
+  } else if (!token && !isPublicPath(pathname)) {
+    // Not logged in and path is protected → send to login
+    response = NextResponse.redirect(new URL('/login', req.url))
+  } else {
+    // Allowed to proceed
+    response = NextResponse.next()
+  }
+
+  // ✅ Sync rememberMe cookie onto httpOnly cookie on whichever response we’re returning
   const rememberMeFromClient = req.cookies.get('rememberMeForward')?.value
   if (rememberMeFromClient !== undefined) {
-    res.cookies.set('rememberMe', rememberMeFromClient, {
+    response.cookies.set('rememberMe', rememberMeFromClient, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
     })
-    res.cookies.delete('rememberMeForward')
+    response.cookies.delete('rememberMeForward')
   }
 
-  const isAuthPage = pathname.startsWith('/login')
-
-  if (isAuthPage && token) {
-    return NextResponse.redirect(new URL('/', req.url))
-  }
-
-  if (!token && !isAuthPage) {
-    return NextResponse.redirect(new URL('/login', req.url))
-  }
-
-  return res
+  return response
 }
 
 export const config = {
-  matcher: ['/((?!api|_next|static|favicon.ico|login).*)', '/login'],
+  // Let code handle which routes are public; run middleware for most pages
+  matcher: [
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+  ],
 }

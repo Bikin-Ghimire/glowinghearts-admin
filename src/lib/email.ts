@@ -1,29 +1,48 @@
 // lib/sendEmail.ts
-import nodemailer from 'nodemailer';
+import nodemailer from 'nodemailer'
 
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,           // e.g. smtp.gmail.com or your SMTP provider
-  port: Number(process.env.EMAIL_PORT),   // 587 for TLS, 465 for SSL
-  secure: true,                          // true for port 465, false for others
-  auth: {
-    user: process.env.EMAIL_USER,         // your SMTP user/email
-    pass: process.env.EMAIL_PASS,         // your SMTP password or app password
-  },
-});
-
-interface SendEmailOptions {
-  to: string;
-  subject: string;
-  html: string;
+function parseBool(v: string | undefined, fallback: boolean) {
+  if (v === undefined) return fallback
+  return ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())
 }
 
-export async function sendEmail({ to, subject, html }: SendEmailOptions) {
+const host = process.env.EMAIL_HOST
+const port = Number(process.env.EMAIL_PORT || 465)
+const secure = parseBool(process.env.EMAIL_SECURE, port === 465) // true for 465, false for 587 by default
+const user = process.env.EMAIL_USER
+const pass = process.env.EMAIL_PASS
+
+if (!host || !user || !pass) {
+  throw new Error('SMTP env vars missing: EMAIL_HOST, EMAIL_USER, EMAIL_PASS')
+}
+
+const transporter = nodemailer.createTransport({
+  host,
+  port,
+  secure,
+  auth: { user, pass },
+})
+
+export interface SendEmailOptions {
+  to: string
+  subject: string
+  html: string
+  text?: string
+  from?: string
+  replyTo?: string
+}
+
+export async function sendEmail({ to, subject, html, text, from, replyTo }: SendEmailOptions) {
+  const fromAddr = from || process.env.EMAIL_FROM || process.env.EMAIL_USER!
   const info = await transporter.sendMail({
-    from: `"Glowing Hearts Fundraising - " <${process.env.EMAIL_USER}>`,
+    from: fromAddr, // e.g. "Glowing Hearts <no-reply@yourdomain.com>"
     to,
     subject,
     html,
-  });
-
-  console.log('Email sent:', info.messageId);
+    text,
+    replyTo,
+  })
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('Email sent:', info.messageId)
+  }
 }
