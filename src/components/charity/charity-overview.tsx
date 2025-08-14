@@ -1,5 +1,6 @@
 'use client'
 
+import { Dialog, DialogActions, DialogBody, DialogDescription, DialogTitle } from '@/components//dialog'
 import { Badge } from '@/components/badge'
 import { Button } from '@/components/button'
 import { Heading } from '@/components/heading'
@@ -22,6 +23,7 @@ export function CharityOverview({
   handleDeactivate: (id: string) => void
 }) {
   const { data: session } = useSession()
+  const user = session?.user
   const [charityKey, setCharityKey] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -30,39 +32,8 @@ export function CharityOverview({
     color: 'zinc',
   }
 
-  // const updateCharityKey = async () => {
-  //   setLoading(true)
-  //   setMessage(null)
-
-  //   try {
-  //     const token = await getTokenFromSession(session)
-  //     if (!token) throw new Error('Not authenticated')
-
-  //     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Charities/${charity.Guid_CharityId}`, {
-  //       method: 'PUT',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //         Authorization: `Bearer ${token}`,
-  //       },
-  //       body: JSON.stringify({
-  //         VC_CharityDesc: charity.VC_CharityDesc,
-  //         Txt_CharityDesc: charity.Txt_CharityDesc,
-  //         VC_ContactFirstName: charity.VC_ContactFirstName,
-  //         VC_ContactLastName: charity.VC_ContactLastName,
-  //         VC_ContactEmail: charity.VC_ContactEmail,
-  //         VC_ContactPhone: charity.VC_ContactPhone,
-  //         VC_CharityKey: charityKey,
-  //       }),
-  //     })
-
-  //     if (!res.ok) throw new Error('Failed to update charity key')
-  //     setMessage('Charity key updated successfully.')
-  //   } catch (err: any) {
-  //     setMessage(err.message || 'Something went wrong.')
-  //   } finally {
-  //     setLoading(false)
-  //   }
-  // }
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [pendingCharityId, setPendingCharityId] = useState<string | null>(null)
 
   const [stripeStatus, setStripeStatus] = useState<{
     charges_enabled: boolean
@@ -112,6 +83,7 @@ export function CharityOverview({
             <div className="mt-2 text-sm/6 text-zinc-500">Charity Key: {charity.VC_CharityKey}</div>
           </div>
         </div>
+        { [1, 2].includes(user?.charityAccess?.[0]?.Int_UserAccess ?? 0) && (
         <div className="flex gap-4">
           {charity.Int_CharityStatus !== 1 ? (
             <Button outline href={`/charities/${charity.Guid_CharityId}/edit`}>
@@ -148,11 +120,18 @@ export function CharityOverview({
             </div>
           )}
           {charity.Int_CharityStatus === 1 && (
-            <Button color="red" onClick={() => handleDeactivate(charity.Guid_CharityId)}>
+            <Button
+              color="red"
+              onClick={() => {
+                setPendingCharityId(charity.Guid_CharityId)
+                setConfirmOpen(true)
+              }}
+            >
               Deactivate
             </Button>
           )}
         </div>
+        )}
       </div>
 
       {!charity.VC_CharityKey && (
@@ -240,6 +219,33 @@ export function CharityOverview({
           </div>
         </div>
       )}
+
+      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} size="sm">
+        <DialogTitle>Confirm Action</DialogTitle>
+        <DialogDescription>Are you sure you want to deactivate this charity?</DialogDescription>
+        <DialogBody>
+          <p className="text-sm text-zinc-600 dark:text-zinc-300">
+            This action will not affect ongoing raffles within the charity, but you will not be able to create new
+            raffles until you activate it again.
+          </p>
+        </DialogBody>
+        <DialogActions>
+          <Button outline onClick={() => setConfirmOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            color="red"
+            onClick={() => {
+              if (pendingCharityId) {
+                handleDeactivate(pendingCharityId)
+              }
+              setConfirmOpen(false)
+            }}
+          >
+            Yes, Deactivate
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   )
 }

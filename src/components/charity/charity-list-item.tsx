@@ -23,6 +23,7 @@ interface Props {
 
 export default function CharityListItem({ charity, session, refetchCharities }: Props) {
   const { handleActivate, handleDeactivate } = useCharityListActions(session, refetchCharities)
+  const user = session?.user
 
   const statusMap = {
     1: { label: 'Active', color: 'lime' },
@@ -41,6 +42,7 @@ export default function CharityListItem({ charity, session, refetchCharities }: 
         </div>
         <div className="flex items-center gap-4">
           <Badge color={color}>{label}</Badge>
+          { [1, 2].includes(user?.charityAccess?.[0]?.Int_UserAccess ?? 0) && (
           <Dropdown>
             <DropdownButton plain aria-label="More options">
               <EllipsisVerticalIcon />
@@ -65,6 +67,7 @@ export default function CharityListItem({ charity, session, refetchCharities }: 
               </DropdownSection>
             </DropdownMenu>
           </Dropdown>
+          )}
         </div>
       </div>
     </li>

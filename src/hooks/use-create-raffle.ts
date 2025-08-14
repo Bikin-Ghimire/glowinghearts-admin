@@ -1,7 +1,24 @@
 // hooks/useCreateRaffle.ts
-import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { getTokenFromSession } from './use-session-token'
+import { TEMPLATE_PURCHASE_HTML, TEMPLATE_WINNER_HTML } from '@/constants/templates'
+
+async function postTemplate(raffleId: string, templateType: 1 | 2, token: string, html: string) {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Template/${raffleId}/${templateType}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ Txt_Template: html }),
+  })
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`Template ${templateType} failed: ${res.status} - ${err}`)
+  }
+  return res.json()
+}
 
 export function useCreateRaffle({
   charityId,
@@ -50,7 +67,7 @@ export function useCreateRaffle({
   }
 
   const handleCreate = async () => {
-    if (!charityId) return alert("No charity ID provided")
+    if (!charityId) return alert('No charity ID provided')
     const token = await getTokenFromSession(session)
 
     const body = {
@@ -135,8 +152,18 @@ export function useCreateRaffle({
       if (!buyInRes.ok) return alert(`Buy-In Error: ${await buyInRes.text()}`)
     }
 
+    // NEW: Upload Templates (1 = purchase/receipt, 2 = winner notice)
+    try {
+      await Promise.all([
+        postTemplate(Guid_DrawId, 1, token, TEMPLATE_PURCHASE_HTML),
+        postTemplate(Guid_DrawId, 2, token, TEMPLATE_WINNER_HTML),
+      ])
+    } catch (e: any) {
+      return alert(e.message || 'Template upload failed')
+    }
+
     alert('✅ Raffle created successfully!')
-    router.push(`/raffles/${Guid_DrawId}`)
+    router.push(`/charities/${charityId}/${Guid_DrawId}`)
   }
 
   return { handleCreate }

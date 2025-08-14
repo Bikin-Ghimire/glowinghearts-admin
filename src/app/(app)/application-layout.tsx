@@ -35,9 +35,9 @@ import { usePathname } from 'next/navigation'
 function AccountDropdownMenu({ anchor }: { anchor: 'top start' | 'bottom end' }) {
   return (
     <DropdownMenu className="min-w-64" anchor={anchor}>
-      <DropdownItem href="#">
+      <DropdownItem href="/users/update-password">
         <UserCircleIcon />
-        <DropdownLabel>My account</DropdownLabel>
+        <DropdownLabel>Change Password</DropdownLabel>
       </DropdownItem>
       <DropdownDivider />
       <DropdownItem
@@ -103,11 +103,15 @@ export function ApplicationLayout({ children }: { children: React.ReactNode }) {
                 <TrophyIcon />
                 <SidebarLabel>Charity</SidebarLabel>
               </SidebarItem>
-              <SidebarDivider />
-              <SidebarItem href="/users" current={pathname.startsWith('/users')}>
-                <UserCircleIcon />
-                <SidebarLabel>Users</SidebarLabel>
-              </SidebarItem>
+              {user?.charityAccess[0]?.Int_UserAccess === 1 && (
+                <>
+                  <SidebarDivider />
+                  <SidebarItem href="/users" current={pathname.startsWith('/users')}>
+                    <UserCircleIcon />
+                    <SidebarLabel>Users</SidebarLabel>
+                  </SidebarItem>
+                </>
+              )}
               <SidebarDivider />
               <SidebarItem href="/reports" current={pathname.startsWith('/reports')}>
                 <SparklesIcon />
@@ -123,10 +127,7 @@ export function ApplicationLayout({ children }: { children: React.ReactNode }) {
                   <UserCircleIcon className="size-10 text-zinc-500 dark:text-zinc-400" />
                   <span className="min-w-0">
                     <span className="block truncate text-sm/5 font-medium text-zinc-950 dark:text-white">
-                      {user?.name || 'User'}
-                    </span>
-                    <span className="block truncate text-xs/5 font-normal text-zinc-500 dark:text-zinc-400">
-                      {user?.email || 'user@example.com'}
+                      {user?.email || 'User'}
                     </span>
                   </span>
                 </span>

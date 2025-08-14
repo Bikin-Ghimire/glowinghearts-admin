@@ -8,9 +8,12 @@ import { raffleStatusMap } from '@/lib/utils'
 import { PlusIcon } from '@heroicons/react/16/solid'
 import { format } from 'date-fns'
 import { useState } from 'react'
+import { useSession } from 'next-auth/react'
 
 export function CharityRaffleList({ charity, raffles }: { charity: any; raffles: any[] }) {
   const [selectedStatuses, setSelectedStatuses] = useState<number[]>([])
+  const { data: session } = useSession()
+  const user = session?.user
 
   const toggleStatus = (status: number) => {
     setSelectedStatuses((prev) => (prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]))
@@ -24,6 +27,8 @@ export function CharityRaffleList({ charity, raffles }: { charity: any; raffles:
     <div className="mt-8">
       <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
         <Heading>Recent Raffles</Heading>
+        { [1, 2].includes(user?.charityAccess?.[0]?.Int_UserAccess ?? 0) && (
+        <div>
         {charity.Int_CharityStatus === 1 ? (
           <Button color="fuchsia" href={`/charities/${charity.Guid_CharityId}/create-raffle`} className="flex items-center">
             <PlusIcon className="mr-2" />
@@ -38,6 +43,8 @@ export function CharityRaffleList({ charity, raffles }: { charity: any; raffles:
               Activate charity to create a raffle
             </div>
           </div>
+        )}
+        </div>
         )}
       </div>
 

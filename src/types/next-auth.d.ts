@@ -3,6 +3,8 @@ import 'next-auth'
 declare module 'next-auth' {
   interface User {
     rememberMe?: boolean
+    password?: string
+    charityAccess?: any[]
   }
 
   interface Session {
@@ -10,6 +12,8 @@ declare module 'next-auth' {
       id: string
       email: string
       rememberMe?: boolean
+      password?: string
+      charityAccess?: any[]
     }
     expires: string
   }
@@ -18,6 +22,8 @@ declare module 'next-auth' {
     id: string
     email: string
     rememberMe?: boolean
+    password?: string
+    charityAccess?: any[]
     exp?: number
   }
 }
