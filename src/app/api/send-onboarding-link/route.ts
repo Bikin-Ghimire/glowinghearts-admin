@@ -1,4 +1,4 @@
-import { authOptions } from '@/app/api/auth/[...nextauth]/route' // ✅ adjust if path differs
+import { authOptions } from '@/lib/auth-options' // ✅ adjust if path differs
 import { getTokenFromSession } from '@/hooks/use-session-token'
 import { sendEmail } from '@/lib/email' // your email utility
 import { stripe } from '@/lib/utils'
