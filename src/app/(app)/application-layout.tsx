@@ -103,7 +103,7 @@ export function ApplicationLayout({ children }: { children: React.ReactNode }) {
                 <TrophyIcon />
                 <SidebarLabel>Charity</SidebarLabel>
               </SidebarItem>
-              {user?.charityAccess[0]?.Int_UserAccess === 1 && (
+              {user?.charityAccess?.[0]?.Int_UserAccess === 1 && (
                 <>
                   <SidebarDivider />
                   <SidebarItem href="/users" current={pathname.startsWith('/users')}>
