@@ -19,10 +19,10 @@ export default function CreateRafflePage() {
   const { handleCreate } = useCreateRaffle({ ...form, charityId })
 
   const steps = [
-    <RaffleDetailsStep {...form} />,
-    <PrizesStep {...form} />,
-    <BundlesStep {...form} />,
-    <ReviewStep {...form} />,
+    <RaffleDetailsStep key="details" {...form} />,
+    <PrizesStep key="prizes" {...form} />,
+    <BundlesStep key="bundles" {...form} />,
+    <ReviewStep key="review" {...form} />,
   ]
 
   const goToStep = (index: number) => {
