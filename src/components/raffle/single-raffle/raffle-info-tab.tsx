@@ -189,7 +189,7 @@ export function RaffleInfoTab({ raffle, prizes, buyIns }: Props) {
                         : 'TBD'}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">{prize.VC_Note}
-                      <Badge color={color}>{label}</Badge>
+                      <Badge color={color as 'fuchsia' | 'zinc' | 'green' | 'red' | 'yellow' | 'blue'}>{label}</Badge>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">
                       {!prize.Guid_TicketId || prize.Guid_TicketId === 'null'

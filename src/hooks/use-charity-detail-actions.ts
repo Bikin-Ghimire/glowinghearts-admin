@@ -1,7 +1,7 @@
 import { activateCharity, deactivateCharity } from '@/lib/charities'
 import { updateCharityStatus } from '@/lib/charities'
 
-export function useCharityDetailActions(session: any, setCharity: Function) {
+export function useCharityDetailActions(session: any, setCharity: () => void) {
   return {
     handleActivate: (id: string) =>
       updateCharityStatus({

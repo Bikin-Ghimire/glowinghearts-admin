@@ -148,7 +148,6 @@ export function CharityOverview({
         (!stripeStatus.charges_enabled || !stripeStatus.details_submitted || !stripeStatus.payouts_enabled) && (
           <div className="mt-8">
             <Button
-              variant="secondary"
               onClick={async () => {
                 const res = await fetch('/api/resend-onboarding-link', {
                   method: 'POST',

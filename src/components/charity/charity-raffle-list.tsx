@@ -108,7 +108,7 @@ export function CharityRaffleList({ charity, raffles }: { charity: any; raffles:
                     <TableCell>{format(new Date(raffle.Dt_SalesOpen), 'MMMM d, yyyy')}</TableCell>
                     <TableCell>{format(new Date(raffle.Dt_SalesClose), 'MMMM d, yyyy')}</TableCell>
                     <TableCell className="text-right">
-                      <Badge color={color}>{label}</Badge>
+                      <Badge color={color as 'fuchsia' | 'zinc' | 'green' | 'red' | 'yellow' | 'blue'}>{label}</Badge>
                     </TableCell>
                   </TableRow>
                 )

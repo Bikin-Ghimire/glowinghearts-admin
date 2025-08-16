@@ -38,7 +38,7 @@ const columnHelper = createColumnHelper<Purchase>()
 export function RaffleSalesTab({ purchases }: Props) {
   const [expanded, setExpanded] = useState({})
 
-  const columns: ColumnDef<Purchase>[] = [
+  const columns: ColumnDef<Purchase, any>[] = [
     columnHelper.accessor('Guid_PurchaseId', {
       header: 'Purchase ID',
       cell: (info) => info.getValue(),
