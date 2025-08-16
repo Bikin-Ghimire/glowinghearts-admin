@@ -1,8 +1,8 @@
 // hooks/useCreateRaffle.ts
+import { TEMPLATE_PURCHASE_HTML, TEMPLATE_WINNER_HTML } from '@/constants/templates'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { getTokenFromSession } from './use-session-token'
-import { TEMPLATE_PURCHASE_HTML, TEMPLATE_WINNER_HTML } from '@/constants/templates'
 
 async function postTemplate(raffleId: string, templateType: 1 | 2, token: string, html: string) {
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Template/${raffleId}/${templateType}`, {
@@ -69,6 +69,10 @@ export function useCreateRaffle({
   const handleCreate = async () => {
     if (!charityId) return alert('No charity ID provided')
     const token = await getTokenFromSession(session)
+    if (!token) {
+      alert('Not authenticated. Please sign in again.')
+      return
+    }
 
     const body = {
       VC_LicenseNumb: licenseNo,

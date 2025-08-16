@@ -61,6 +61,11 @@ export async function updateRaffleStatus({
   apiFn: (id: string, token: string) => Promise<any>
 }) {
   const token = await getTokenFromSession(session)
+  if (!token) {
+    console.error('Unable to retrieve session token')
+    alert('Unable to retrieve session token.')
+    return
+  }
   try {
     const res = await apiFn(id, token)
     console.log('Backend response:', res)

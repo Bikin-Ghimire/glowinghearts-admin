@@ -31,51 +31,52 @@ type Props = {
 const columnHelper = createColumnHelper<Log>()
 
 export function RaffleChangeLogsTab({ logs }: Props) {
-  const columns: ColumnDef<Log>[] = [
-    columnHelper.accessor('Dt_CreateUpdate', {
-      header: 'Timestamp',
-      cell: ({ getValue }) => format(new Date(getValue()), 'yyyy-MM-dd HH:mm:ss'),
-    }),
-    columnHelper.accessor('VC_LicenseNumb', { header: 'License No' }),
-    columnHelper.accessor('VC_RaffleName', { header: 'Raffle Name' }),
-    columnHelper.accessor('VC_RaffleLocation', { header: 'Location' }),
-    columnHelper.accessor('Int_DrawStatus', { header: 'Draw Status' }),
-    columnHelper.accessor('Dt_SalesOpen', {
-      header: 'Sales Open',
-      cell: ({ getValue }) => format(new Date(getValue()), 'MMM d, yyyy'),
-    }),
-    columnHelper.accessor('Dt_SalesClose', {
-      header: 'Sales Close',
-      cell: ({ getValue }) => format(new Date(getValue()), 'MMM d, yyyy'),
-    }),
-    columnHelper.accessor('User_Id', { header: 'User ID' }),
-    columnHelper.accessor('VC_Admin_FirstName', {
-      header: 'First Name',
-      cell: ({ getValue }) => getValue() || '-',
-    }),
-    columnHelper.accessor('VC_Admin_LastName', {
-      header: 'Last Name',
-      cell: ({ getValue }) => getValue() || '-',
-    }),
-    columnHelper.accessor('Txt_GameDetails', {
-      header: 'Game Details',
-      cell: ({ getValue }) => (
-        <div
-          className="prose prose-sm max-w-[400px] line-clamp-3 hover:line-clamp-none"
-          dangerouslySetInnerHTML={{ __html: getValue() || '' }}
-        />
-      ),
-    }),
-    columnHelper.accessor('Txt_GameRules', {
-      header: 'Game Rules',
-      cell: ({ getValue }) => (
-        <div
-          className="prose prose-sm max-w-[400px] line-clamp-3 hover:line-clamp-none"
-          dangerouslySetInnerHTML={{ __html: getValue() || '' }}
-        />
-      ),
-    }),
-  ]
+  const columns: ColumnDef<Log, any>[] = [
+  columnHelper.accessor('Dt_CreateUpdate', {
+    header: 'Timestamp',
+    cell: ({ getValue }) => format(new Date(getValue()), 'yyyy-MM-dd HH:mm:ss'),
+  }),
+  columnHelper.accessor('VC_LicenseNumb', { header: 'License No' }),
+  columnHelper.accessor('VC_RaffleName', { header: 'Raffle Name' }),
+  columnHelper.accessor('VC_RaffleLocation', { header: 'Location' }),
+  columnHelper.accessor('Int_DrawStatus', { header: 'Draw Status' }),
+  columnHelper.accessor('Dt_SalesOpen', {
+    header: 'Sales Open',
+    cell: ({ getValue }) => format(new Date(getValue()), 'MMM d, yyyy'),
+  }),
+  columnHelper.accessor('Dt_SalesClose', {
+    header: 'Sales Close',
+    cell: ({ getValue }) => format(new Date(getValue()), 'MMM d, yyyy'),
+  }),
+  columnHelper.accessor('User_Id', { header: 'User ID' }),
+  // note nullable names
+  columnHelper.accessor('VC_Admin_FirstName', {
+    header: 'First Name',
+    cell: ({ getValue }) => getValue() ?? '-',
+  }),
+  columnHelper.accessor('VC_Admin_LastName', {
+    header: 'Last Name',
+    cell: ({ getValue }) => getValue() ?? '-',
+  }),
+  columnHelper.accessor('Txt_GameDetails', {
+    header: 'Game Details',
+    cell: ({ getValue }) => (
+      <div
+        className="prose prose-sm max-w-[400px] line-clamp-3 hover:line-clamp-none"
+        dangerouslySetInnerHTML={{ __html: getValue() || '' }}
+      />
+    ),
+  }),
+  columnHelper.accessor('Txt_GameRules', {
+    header: 'Game Rules',
+    cell: ({ getValue }) => (
+      <div
+        className="prose prose-sm max-w/[400px] line-clamp-3 hover:line-clamp-none"
+        dangerouslySetInnerHTML={{ __html: getValue() || '' }}
+      />
+    ),
+  }),
+]
 
   const table = useReactTable({
     data: logs,

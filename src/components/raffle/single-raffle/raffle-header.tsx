@@ -17,7 +17,10 @@ type Props = {
   onDeactivate: () => void
 }
 
-const statusMap: Record<number, { label: string; color: string }> = {
+const statusMap: Record<
+  number,
+  { label: string; color: 'red' | 'orange' | 'amber' | 'yellow' | 'lime' | 'green' | 'emerald' | 'teal' | 'cyan' | 'sky' | 'blue' | 'indigo' | 'violet' | 'purple' | 'fuchsia' | 'pink' | 'rose' | 'zinc' }
+> = {
   1: { label: 'Not Started', color: 'zinc' },
   2: { label: 'Active', color: 'lime' },
   3: { label: 'Sales Complete', color: 'amber' },

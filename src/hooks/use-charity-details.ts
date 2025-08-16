@@ -18,6 +18,10 @@ export function useCharityDetails(Guid_CharityId: string) {
     try {
       setLoading(true)
       const token = await getTokenFromSession(session)
+      if (!token) {
+        setError('Unable to get auth token')
+        return
+      }
 
       const charity = await getCharityById(Guid_CharityId, token)
       setCharity(charity)

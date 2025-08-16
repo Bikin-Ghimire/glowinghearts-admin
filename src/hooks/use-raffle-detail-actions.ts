@@ -1,7 +1,7 @@
 
 import { activateRaffle, deactivateRaffle, updateRaffleStatus } from '@/lib/raffles'
 
-export function useRaffleDetailActions(session: any, setRaffle: Function) {
+export function useRaffleDetailActions(session: any, setRaffle: (updater: any) => void) {
   return {
     handleActivate: (id: string) =>
       updateRaffleStatus({

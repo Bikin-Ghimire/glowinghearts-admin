@@ -26,6 +26,11 @@ export async function updateCharityStatus({
   apiFn: (id: string, token: string) => Promise<any>
 }) {
   const token = await getTokenFromSession(session)
+  if (!token) {
+    console.error('No token found in session.')
+    alert('Failed to update charity: No session token found.')
+    return
+  }
   try {
     await apiFn(id, token)
     await updateFn()
