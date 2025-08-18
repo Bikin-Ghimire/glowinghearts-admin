@@ -39,6 +39,8 @@ export function CharityOverview({
     charges_enabled: boolean
     details_submitted: boolean
     payouts_enabled: boolean
+    card_payments: boolean
+    transfers: boolean
   } | null>(null)
 
   useEffect(() => {
@@ -145,7 +147,7 @@ export function CharityOverview({
       )}
 
       {stripeStatus &&
-        (!stripeStatus.charges_enabled || !stripeStatus.details_submitted || !stripeStatus.payouts_enabled) && (
+        (!stripeStatus.charges_enabled || !stripeStatus.details_submitted || !stripeStatus.payouts_enabled || !stripeStatus.card_payments || !stripeStatus.transfers) && (
           <div className="mt-8">
             <Button
               onClick={async () => {
@@ -187,6 +189,32 @@ export function CharityOverview({
                 }`}
               >
                 {stripeStatus.charges_enabled ? '✅ Enabled' : '❌ Not Enabled'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span>Card Payments</span>
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${
+                  stripeStatus.card_payments
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                }`}
+              >
+                {stripeStatus.card_payments ? '✅ Enabled' : '❌ Not Enabled'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span>Transfers Enabled</span>
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${
+                  stripeStatus.transfers
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                }`}
+              >
+                {stripeStatus.transfers ? '✅ Enabled' : '❌ Not Enabled'}
               </span>
             </div>
 
