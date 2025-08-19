@@ -17,3 +17,8 @@ export const raffleStatusMap: Record<number, { label: string; color: string }> =
   5: { label: 'Paid Out', color: 'emerald' },
   6: { label: 'On Hold', color: 'red' },
 }
+
+export const userStatusMap: Record<number, { label: string; color: string }> = {
+  1: { label: 'Active', color: 'lime' },
+  2: { label: 'Inactive', color: 'red' },
+}
