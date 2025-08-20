@@ -18,18 +18,18 @@ type ActionType = 'paid' | 'donate'
 const NOTE_MAX = 1000
 
 const statusMap: Record<number, { label: string; color: string }> = {
-  1: { label: 'Not Drawn', color: 'zinc' },
+  1: { label: 'Not Drawn',  color: 'zinc' },
   2: { label: 'Winner Drawn', color: 'lime' },
-  3: { label: 'Paid Out', color: 'emerald' },
-  4: { label: 'Unclaimed', color: 'amber' },
-  5: { label: 'Donated', color: 'cyan' },
+  3: { label: 'Paid Out',    color: 'emerald' },
+  4: { label: 'Unclaimed',   color: 'amber' },
+  5: { label: 'Donated',     color: 'cyan' },
 }
 
 export function RaffleInfoTab({ raffle, prizes, buyIns }: Props) {
   const { markPaidOut, markDonated, loadingId, error } = usePrizeActions()
   const [localError, setLocalError] = useState<string | null>(null)
 
-  // ✅ Local mirror of prizes for instant UI updates
+  // Local mirror of prizes for instant UI updates
   const [rows, setRows] = useState<any[]>(prizes)
   useEffect(() => setRows(prizes), [prizes])
 
@@ -61,21 +61,18 @@ export function RaffleInfoTab({ raffle, prizes, buyIns }: Props) {
       return
     }
     let ok = false
-    if (action === 'paid') ok = await markPaidOut(prizeId!, trimmed)  // sets to 3
-    if (action === 'donate') ok = await markDonated(prizeId!, trimmed)  // sets to 5
+    if (action === 'paid') ok = await markPaidOut(prizeId!, trimmed)   // sets to 3
+    if (action === 'donate') ok = await markDonated(prizeId!, trimmed) // sets to 5
     if (!ok) {
       setLocalError('Failed to update status.')
       return
     }
 
-    // ✅ Patch just the affected row locally
+    // Patch affected row locally
     setRows(prev =>
       prev.map(p =>
         p.Guid_PrizeId === prizeId
-          ? {
-              ...p,
-              Int_Prize_Status: action === 'paid' ? 3 : 5,
-            }
+          ? { ...p, Int_Prize_Status: action === 'paid' ? 3 : 5 }
           : p
       )
     )
@@ -90,7 +87,7 @@ export function RaffleInfoTab({ raffle, prizes, buyIns }: Props) {
     const Disabled = ({ text }: { text: string }) => (
       <button
         type="button"
-        className="inline-flex cursor-not-allowed items-center rounded-md border border-gray-300 bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-500 opacity-70"
+        className="inline-flex cursor-not-allowed items-center rounded-md border border-zinc-300 bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-500 opacity-70 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400"
         disabled
         aria-disabled
       >
@@ -128,15 +125,17 @@ export function RaffleInfoTab({ raffle, prizes, buyIns }: Props) {
   }
 
   return (
-    <div className="mt-5 space-y-8 text-sm text-gray-500">
+    <div className="mt-5 space-y-8 text-sm text-zinc-600 dark:text-zinc-300">
       {!!(error || localError) && (
-        <div className="rounded-md bg-red-50 p-3 text-xs text-red-700">{localError || error}</div>
+        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
+          {localError || error}
+        </div>
       )}
 
       {/* Game Details */}
       <section>
-        <h3 className="text-base/7 font-semibold text-gray-900">Game Details</h3>
-        <div className="prose prose-sm mt-2 max-w-none">
+        <h3 className="text-base/7 font-semibold text-zinc-900 dark:text-zinc-100">Game Details</h3>
+        <div className="prose prose-sm mt-2 max-w-none text-zinc-700 dark:prose-invert dark:text-zinc-200">
           <ShowMore lines={3}>
             <div dangerouslySetInnerHTML={{ __html: raffle.Txt_GameDetails || 'No game details available.' }} />
           </ShowMore>
@@ -145,8 +144,8 @@ export function RaffleInfoTab({ raffle, prizes, buyIns }: Props) {
 
       {/* Game Rules */}
       <section>
-        <h3 className="text-base/7 font-semibold text-gray-900">Game Rules</h3>
-        <div className="prose prose-sm mt-2 max-w-none">
+        <h3 className="text-base/7 font-semibold text-zinc-900 dark:text-zinc-100">Game Rules</h3>
+        <div className="prose prose-sm mt-2 max-w-none text-zinc-700 dark:prose-invert dark:text-zinc-200">
           <ShowMore lines={3}>
             <div dangerouslySetInnerHTML={{ __html: raffle.Txt_GameRules || 'No game rules available.' }} />
           </ShowMore>
@@ -155,48 +154,54 @@ export function RaffleInfoTab({ raffle, prizes, buyIns }: Props) {
 
       {/* Prizes Table */}
       <section>
-        <h3 className="text-base/7 font-semibold text-gray-900">Prize Details</h3>
-        <div className="mt-2 overflow-x-auto">
-          <p>
-            <b>Prize Claim Period:</b> {raffle.Int_UnClaimedTimeOut} days
+        <h3 className="text-base/7 font-semibold text-zinc-900 dark:text-zinc-100">Prize Details</h3>
+
+        <div className="mt-2">
+          <p className="text-zinc-700 dark:text-zinc-300">
+            <b className="text-zinc-900 dark:text-zinc-100">Prize Claim Period:</b> {raffle.Int_UnClaimedTimeOut} days
           </p>
         </div>
+
         <div className="mt-3 overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-300">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+            <thead className="bg-zinc-50 dark:bg-zinc-900">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Description</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Value</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Draw Date</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Winner</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Actions</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-900 dark:text-zinc-100">Description</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-900 dark:text-zinc-100">Value</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-900 dark:text-zinc-100">Draw Date</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-900 dark:text-zinc-100">Status</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-900 dark:text-zinc-100">Winner</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-900 dark:text-zinc-100">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
-              {prizes.map((prize) => {
-                const { label, color } = statusMap[prize.Int_Prize_Status] || {
-                  label: 'Unknown',
-                  color: 'gray',
-                }
+            <tbody className="divide-y divide-zinc-200 bg-white dark:divide-zinc-800 dark:bg-zinc-900">
+              {rows.map((prize) => {
+                const { label, color } = statusMap[prize.Int_Prize_Status] || { label: 'Unknown', color: 'zinc' }
                 return (
                   <tr key={prize.Guid_PrizeId}>
-                    <td className="px-4 py-3 text-sm text-gray-900">{prize.VC_Description}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">${prize.Dec_Value}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">
+                    <td className="px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100">{prize.VC_Description}</td>
+                    <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300">${prize.Dec_Value}</td>
+                    <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300">
                       {prize.Dt_Draw && prize.Dt_Draw !== '0000-00-00 00:00:00'
                         ? format(new Date(prize.Dt_Draw), 'MMMM d, yyyy h:mm a')
                         : 'TBD'}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{prize.VC_Note}
-                      <Badge color={color as 'fuchsia' | 'zinc' | 'green' | 'red' | 'yellow' | 'blue'}>{label}</Badge>
+                    <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300">
+                      {prize.VC_Note && (
+                        <span className="mr-2 inline-block max-w-[24ch] truncate align-middle text-zinc-500 dark:text-zinc-400">
+                          {prize.VC_Note}
+                        </span>
+                      )}
+                      <Badge color={color as any}>{label}</Badge>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">
+                    <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300">
                       {!prize.Guid_TicketId || prize.Guid_TicketId === 'null'
                         ? 'No Winner Selected'
                         : prize.Guid_TicketId}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{renderActionButton(prize)}</td>
+                    <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300">
+                      {renderActionButton(prize)}
+                    </td>
                   </tr>
                 )
               })}
@@ -207,22 +212,22 @@ export function RaffleInfoTab({ raffle, prizes, buyIns }: Props) {
 
       {/* Ticket Bundles Table */}
       <section>
-        <h3 className="text-base/7 font-semibold text-gray-900">Ticket Bundles</h3>
+        <h3 className="text-base/7 font-semibold text-zinc-900 dark:text-zinc-100">Ticket Bundles</h3>
         <div className="mt-2 overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-300">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+            <thead className="bg-zinc-50 dark:bg-zinc-900">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Description</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Number of Tickets</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Price</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-900 dark:text-zinc-100">Description</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-900 dark:text-zinc-100">Number of Tickets</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-900 dark:text-zinc-100">Price</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
+            <tbody className="divide-y divide-zinc-200 bg-white dark:divide-zinc-800 dark:bg-zinc-900">
               {buyIns.map((buyIn) => (
                 <tr key={buyIn.Guid_BuyInId}>
-                  <td className="px-4 py-3 text-sm text-gray-900">{buyIn.VC_Description}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{buyIn.Int_NumbTicket}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">${buyIn.Dec_Price}</td>
+                  <td className="px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100">{buyIn.VC_Description}</td>
+                  <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300">{buyIn.Int_NumbTicket}</td>
+                  <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300">${buyIn.Dec_Price}</td>
                 </tr>
               ))}
             </tbody>
@@ -230,17 +235,12 @@ export function RaffleInfoTab({ raffle, prizes, buyIns }: Props) {
         </div>
       </section>
 
-      <Dialog
-        open={open}
-        onClose={resetDialog}        // allows Esc/overlay close
-        size="md"
-        aria-label="Add note for status change"
-      >
-        <DialogTitle>
+      {/* Dialog */}
+      <Dialog open={open} onClose={resetDialog} size="md" aria-label="Add note for status change">
+        <DialogTitle className="text-zinc-900 dark:text-zinc-100">
           {action === 'paid' ? 'Mark Prize as Paid Out' : 'Mark Prize as Donated'}
         </DialogTitle>
-
-        <DialogDescription>
+        <DialogDescription className="text-zinc-600 dark:text-zinc-300">
           Add a note (required). Plain text only.
         </DialogDescription>
 
@@ -250,14 +250,14 @@ export function RaffleInfoTab({ raffle, prizes, buyIns }: Props) {
             value={note}
             onChange={(e) => setNote(e.target.value.slice(0, NOTE_MAX))}
             onBlur={() => setTouched(true)}
-            className="w-full rounded-md border border-zinc-300 bg-white p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-zinc-900 dark:border-zinc-700"
+            className="w-full rounded-md border border-zinc-300 bg-white p-2 text-sm text-zinc-900 placeholder-zinc-400 outline-none focus:ring-2 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder-zinc-500"
             placeholder="e.g., Winner verified and paid via e-transfer on Aug 8, 2025."
           />
           <div className="mt-1 flex items-center justify-between text-xs">
-            <span className={`text-red-600 ${touched && !note.trim() ? '' : 'invisible'}`}>
+            <span className={`text-red-600 dark:text-red-400 ${touched && !note.trim() ? '' : 'invisible'}`}>
               Note is required.
             </span>
-            <span className="text-zinc-400">{note.length}/{NOTE_MAX}</span>
+            <span className="text-zinc-400 dark:text-zinc-500">{note.length}/{NOTE_MAX}</span>
           </div>
         </DialogBody>
 
@@ -265,7 +265,7 @@ export function RaffleInfoTab({ raffle, prizes, buyIns }: Props) {
           <button
             type="button"
             onClick={resetDialog}
-            className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-200 dark:border-zinc-700"
+            className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             Cancel
           </button>

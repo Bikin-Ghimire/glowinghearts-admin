@@ -1,6 +1,6 @@
 'use client'
 
-import { Dialog, DialogActions, DialogBody, DialogDescription, DialogTitle } from '@/components//dialog'
+import { Dialog, DialogActions, DialogBody, DialogDescription, DialogTitle } from '@/components/dialog'
 import { Badge } from '@/components/badge'
 import { Button } from '@/components/button'
 import { Heading } from '@/components/heading'

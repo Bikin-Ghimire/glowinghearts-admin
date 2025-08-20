@@ -216,7 +216,6 @@ export default function UpdatePasswordForm() {
 
   return (
     <form onSubmit={onSubmit} className="grid w-full max-w-sm grid-cols-1 gap-6">
-      <Logo className="h-6 text-zinc-950 dark:text-white forced-colors:text-[CanvasText]" />
       <Heading>Update your password</Heading>
 
       <Field>
