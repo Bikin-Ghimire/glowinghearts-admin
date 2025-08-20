@@ -85,7 +85,7 @@ export function ApplicationLayout({ children }: { children: React.ReactNode }) {
               </DropdownButton>
               <DropdownMenu className="min-w-80 lg:min-w-64" anchor="bottom start">
                 <DropdownDivider />
-                <DropdownItem href="#">
+                <DropdownItem href='' target='_blank'>
                   <Avatar slot="icon" src="/teams/Dark_Icon.svg" />
                   <DropdownLabel>Visit Website</DropdownLabel>
                 </DropdownItem>

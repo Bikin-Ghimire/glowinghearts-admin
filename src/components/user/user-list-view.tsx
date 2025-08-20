@@ -1,15 +1,15 @@
 'use client'
 
+import { useMemo, useState } from 'react'
 import { Badge, BadgeColor } from '@/components/badge'
 import { Button } from '@/components/button'
 import { Heading } from '@/components/heading'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/table'
-import { useUsersAccessMap } from '@/hooks/use-user-acess-levels'
+import { useUsersAccessMap } from '@/hooks/use-user-acess-levels' // keep your existing path
 import { activateUser, deactivateUser, editUserInfo, updateUserAccess } from '@/lib/users'
 import { userStatusMap } from '@/lib/utils'
 import { User } from '@/types/user'
 import { CheckIcon, PencilSquareIcon, PlusIcon, PowerIcon, XMarkIcon } from '@heroicons/react/16/solid'
-import { useMemo, useState } from 'react'
 import { Toaster, toast } from 'react-hot-toast'
 
 interface Props {
@@ -41,12 +41,10 @@ export default function UserListView({ users, setUsers, session }: Props) {
   const [savingAccessId, setSavingAccessId] = useState<string | null>(null)
 
   const [editingUserId, setEditingUserId] = useState<string | null>(null)
-  const [userDraft, setUserDraft] = useState<{ VC_FirstName: string; VC_LastName: string; VC_Email: string } | null>(
-    null
-  )
+  const [userDraft, setUserDraft] = useState<{ VC_FirstName: string; VC_LastName: string; VC_Email: string } | null>(null)
   const [savingUser, setSavingUser] = useState(false)
 
-  // simple optimistic cache for access labels
+  // only set after successful save (pessimistic)
   const [accessOverride, setAccessOverride] = useState<Record<string, string>>({})
 
   const handleStartEditAccess = (userId: string) => {
@@ -64,13 +62,10 @@ export default function UserListView({ users, setUsers, session }: Props) {
 
     try {
       setSavingAccessId(userId)
-      // DO NOT update UI yet — wait for DB
-      await updateUserAccess(userId, nextInt, session)
-
-      // ✅ only reflect after success
-      setAccessOverride((prev) => ({ ...prev, [userId]: nextLabel }))
+      await updateUserAccess(userId, nextInt, session) // wait for DB
+      setAccessOverride((prev) => ({ ...prev, [userId]: nextLabel })) // update after success
       toast.success(`Access updated to "${nextLabel}"`)
-    } catch (e) {
+    } catch {
       toast.error('Failed to update access')
     } finally {
       setSavingAccessId(null)
@@ -97,8 +92,9 @@ export default function UserListView({ users, setUsers, session }: Props) {
     try {
       setSavingUser(true)
       await editUserInfo(editingUserId, userDraft, session)
-      // update list locally
-      setUsers((prev) => prev.map((u) => (u.Guid_UserId === editingUserId ? { ...u, ...userDraft } : u)))
+      setUsers((prev) =>
+        prev.map((u) => (u.Guid_UserId === editingUserId ? { ...u, ...userDraft } : u))
+      )
       toast.success('User info updated')
       setEditingUserId(null)
       setUserDraft(null)
@@ -110,17 +106,21 @@ export default function UserListView({ users, setUsers, session }: Props) {
   }
 
   const toggleActive = async (u: User) => {
-    const isActive = u.Int_UserStatus === 1 // adjust if your status codes differ
+    const isActive = u.Int_UserStatus === 1 // adjust if your codes differ
     const confirmMsg = isActive ? 'Deactivate this user?' : 'Activate this user?'
     if (!window.confirm(confirmMsg)) return
     try {
       if (isActive) {
         await deactivateUser(u.Guid_UserId, session)
-        setUsers((prev) => prev.map((x) => (x.Guid_UserId === u.Guid_UserId ? { ...x, Int_UserStatus: 0 } : x)))
+        setUsers((prev) =>
+          prev.map((x) => (x.Guid_UserId === u.Guid_UserId ? { ...x, Int_UserStatus: 2 } : x))
+        )
         toast.success('User deactivated')
       } else {
         await activateUser(u.Guid_UserId, session)
-        setUsers((prev) => prev.map((x) => (x.Guid_UserId === u.Guid_UserId ? { ...x, Int_UserStatus: 1 } : x)))
+        setUsers((prev) =>
+          prev.map((x) => (x.Guid_UserId === u.Guid_UserId ? { ...x, Int_UserStatus: 1 } : x))
+        )
         toast.success('User activated')
       }
     } catch {
@@ -135,15 +135,11 @@ export default function UserListView({ users, setUsers, session }: Props) {
         toastOptions={{
           className:
             'border border-zinc-200 bg-white text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100',
-          success: {
-            iconTheme: { primary: '#22c55e', secondary: 'transparent' }, // green-500
-          },
-          error: {
-            iconTheme: { primary: '#ef4444', secondary: 'transparent' }, // red-500
-          },
+          success: { iconTheme: { primary: '#22c55e', secondary: 'transparent' } }, // green-500
+          error: { iconTheme: { primary: '#ef4444', secondary: 'transparent' } },   // red-500
         }}
       />
-      <div className="flex flex-wrap items-end justify-between gap-4"></div>
+
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="max-sm:w-full sm:flex-1">
           <Heading>Users</Heading>
@@ -153,6 +149,7 @@ export default function UserListView({ users, setUsers, session }: Props) {
           CREATE USER
         </Button>
       </div>
+
       <Table className="mt-4 [--gutter:--spacing(6)] lg:[--gutter:--spacing(10)]">
         <TableHead>
           <TableRow>
@@ -162,6 +159,7 @@ export default function UserListView({ users, setUsers, session }: Props) {
             <TableHeader className="text-right">Status / Actions</TableHeader>
           </TableRow>
         </TableHead>
+
         <TableBody>
           {users.map((user) => {
             const { label, color } = userStatusMap[user?.Int_UserStatus] ?? { label: 'Unknown', color: 'zinc' }
@@ -171,46 +169,39 @@ export default function UserListView({ users, setUsers, session }: Props) {
             const draftVal = accessDraft[user.Guid_UserId]
 
             return (
-              <TableRow key={user.Guid_UserId} title={`User #${user.Guid_UserId}`} href={``}>
-                <TableCell className="flex items-center gap-2">
-                  <span>
-                    {user.VC_FirstName} {user.VC_LastName}
-                  </span>
+              <TableRow key={user.Guid_UserId} title={`User #${user.Guid_UserId}`} href="">
+                {/* Name + inline edit */}
+                <TableCell className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
+                  <span>{user.VC_FirstName} {user.VC_LastName}</span>
                   <button
                     type="button"
-                    className="text-gray-500 hover:text-gray-800"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      openEditUser(user)
-                    }}
+                    className="text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); openEditUser(user) }}
                     title="Edit user info"
                   >
                     <PencilSquareIcon className="h-4 w-4" />
                   </button>
                 </TableCell>
 
-                <TableCell>{user.VC_Email}</TableCell>
+                {/* Email */}
+                <TableCell className="text-zinc-800 dark:text-zinc-200">{user.VC_Email}</TableCell>
 
+                {/* Access Level */}
                 <TableCell>
                   {isEditingAccess ? (
                     <div className="flex items-center gap-2">
                       <select
-                        className="rounded-md border px-2 py-1 text-sm"
+                        className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900
+                                   dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
                         value={draftVal ?? labelToInt(currentAccessLabel) ?? 1}
                         onChange={(e) =>
                           setAccessDraft((prev) => ({ ...prev, [user.Guid_UserId]: Number(e.target.value) }))
                         }
-                        onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                        }}
-                        disabled={savingAccessId === user.Guid_UserId} // <-- disable while saving
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+                        disabled={savingAccessId === user.Guid_UserId}
                       >
                         {ACCESS_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                       </select>
 
@@ -229,44 +220,34 @@ export default function UserListView({ users, setUsers, session }: Props) {
                         <>
                           <button
                             type="button"
-                            className="rounded p-1 hover:bg-gray-100"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              handleSaveAccess(user.Guid_UserId)
-                            }}
+                            className="rounded p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSaveAccess(user.Guid_UserId) }}
                             title="Save"
                           >
-                            <CheckIcon className="h-4 w-4" />
+                            <CheckIcon className="h-4 w-4 text-zinc-700 dark:text-zinc-200" />
                           </button>
                           <button
                             type="button"
-                            className="rounded p-1 hover:bg-gray-100"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              handleCancelAccess()
-                            }}
+                            className="rounded p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCancelAccess() }}
                             title="Cancel"
                           >
-                            <XMarkIcon className="h-4 w-4" />
+                            <XMarkIcon className="h-4 w-4 text-zinc-700 dark:text-zinc-200" />
                           </button>
                         </>
                       )}
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
-                      <span>{currentAccessLabel ?? (loading ? 'Loading…' : 'N/A')}</span>
+                      <span className="text-zinc-900 dark:text-zinc-100">
+                        {currentAccessLabel ?? (loading ? 'Loading…' : 'N/A')}
+                      </span>
                       <button
                         type="button"
-                        className="text-gray-500 hover:text-gray-800 disabled:opacity-50"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          handleStartEditAccess(user.Guid_UserId)
-                        }}
+                        className="text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 disabled:opacity-50"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleStartEditAccess(user.Guid_UserId) }}
                         title="Change access level"
-                        disabled={loading || savingAccessId === user.Guid_UserId} // <-- block while saving
+                        disabled={loading || savingAccessId === user.Guid_UserId}
                       >
                         <PencilSquareIcon className="h-4 w-4" />
                       </button>
@@ -274,17 +255,15 @@ export default function UserListView({ users, setUsers, session }: Props) {
                   )}
                 </TableCell>
 
+                {/* Status / Actions */}
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-3">
                     <Badge color={color as BadgeColor}>{label}</Badge>
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-gray-50"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        toggleActive(user)
-                      }}
+                      className="inline-flex items-center gap-1 rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-800 hover:bg-zinc-50
+                                 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleActive(user) }}
                       title={user.Int_UserStatus === 1 ? 'Deactivate' : 'Activate'}
                     >
                       <PowerIcon className="h-4 w-4" />
@@ -297,54 +276,60 @@ export default function UserListView({ users, setUsers, session }: Props) {
           })}
         </TableBody>
       </Table>
-      {/* Minimal inline modal using your own dialog later if you prefer */}
+
+      {/* Minimal inline modal */}
       {editingUserId && userDraft && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-          onClick={() => {
-            setEditingUserId(null)
-            setUserDraft(null)
-          }}
+          onClick={() => { setEditingUserId(null); setUserDraft(null) }}
         >
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 text-zinc-900 shadow-xl
+                       dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="mb-4 text-lg font-semibold">Edit User</h3>
             <div className="space-y-3">
               <div>
-                <label className="mb-1 block text-sm">First name</label>
+                <label className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300">First name</label>
                 <input
-                  className="w-full rounded border px-3 py-2"
+                  className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-zinc-900
+                             focus:outline-none focus:ring-2 focus:ring-zinc-300
+                             dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:ring-zinc-600"
                   value={userDraft.VC_FirstName}
                   onChange={(e) => setUserDraft({ ...userDraft, VC_FirstName: e.target.value })}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm">Last name</label>
+                <label className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300">Last name</label>
                 <input
-                  className="w-full rounded border px-3 py-2"
+                  className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-zinc-900
+                             focus:outline-none focus:ring-2 focus:ring-zinc-300
+                             dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:ring-zinc-600"
                   value={userDraft.VC_LastName}
                   onChange={(e) => setUserDraft({ ...userDraft, VC_LastName: e.target.value })}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm">Email</label>
+                <label className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300">Email</label>
                 <input
-                  className="w-full rounded border px-3 py-2"
+                  className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-zinc-900
+                             focus:outline-none focus:ring-2 focus:ring-zinc-300
+                             dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:ring-zinc-600"
                   value={userDraft.VC_Email}
                   onChange={(e) => setUserDraft({ ...userDraft, VC_Email: e.target.value })}
                 />
               </div>
               <div className="mt-4 flex items-center justify-end gap-2">
                 <button
-                  className="rounded px-3 py-2 hover:bg-gray-100"
-                  onClick={() => {
-                    setEditingUserId(null)
-                    setUserDraft(null)
-                  }}
+                  className="rounded px-3 py-2 text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                  onClick={() => { setEditingUserId(null); setUserDraft(null) }}
                 >
                   Cancel
                 </button>
                 <button
-                  className="rounded bg-black px-3 py-2 text-white disabled:opacity-50"
+                  className="rounded bg-zinc-900 px-3 py-2 text-white hover:bg-zinc-800 disabled:opacity-50
+                             dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
                   onClick={saveUserInfo}
                   disabled={savingUser}
                 >

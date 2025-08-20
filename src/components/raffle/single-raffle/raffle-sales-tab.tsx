@@ -1,3 +1,4 @@
+// components/Raffle/RaffleSalesTab.tsx
 'use client'
 
 import {
@@ -45,7 +46,10 @@ export function RaffleSalesTab({ purchases }: Props) {
     }),
     columnHelper.accessor('Dec_TotalPrice', {
       header: 'Amount Paid',
-      cell: (info) => `$${info.getValue()}`,
+      cell: (info) => {
+        const val = Number(info.getValue())
+        return isNaN(val) ? info.getValue() : `$${val.toFixed(2)}`
+      },
     }),
     columnHelper.accessor('Int_TotalTickets', {
       header: 'Tickets Purchased',
@@ -70,25 +74,39 @@ export function RaffleSalesTab({ purchases }: Props) {
   })
 
   return (
-    <div className="overflow-x-auto border rounded shadow-sm">
-      <table className="min-w-[1200px] divide-y divide-gray-200 text-sm text-left">
-        <thead className="bg-gray-50 sticky top-0 z-10">
+    <div className="overflow-x-auto rounded border border-zinc-200 shadow-sm dark:border-zinc-700">
+      <table className="min-w-[1200px] text-left text-sm text-zinc-900 dark:text-zinc-100">
+        {/* Header */}
+        <thead className="sticky top-0 z-10 bg-zinc-50 dark:bg-zinc-800">
           {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id}>
+            <tr key={headerGroup.id} className="border-b border-zinc-200 dark:border-zinc-700">
               {headerGroup.headers.map((header) => (
-                <th key={header.id} className="px-4 py-2 font-semibold text-gray-900 whitespace-nowrap">
+                <th
+                  key={header.id}
+                  className="whitespace-nowrap px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-100"
+                >
                   {flexRender(header.column.columnDef.header, header.getContext())}
                 </th>
               ))}
             </tr>
           ))}
         </thead>
-        <tbody className="divide-y divide-gray-100 bg-white">
+
+        {/* Body */}
+        <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-800 dark:bg-zinc-900">
           {table.getRowModel().rows.map((row) => (
             <React.Fragment key={row.id}>
               <tr
-                className="hover:bg-gray-50 cursor-pointer"
+                className="cursor-pointer hover:bg-zinc-50 focus-within:bg-zinc-50 dark:hover:bg-zinc-800 dark:focus-within:bg-zinc-800"
                 onClick={() => row.toggleExpanded()}
+                aria-expanded={row.getIsExpanded()}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    row.toggleExpanded()
+                  }
+                }}
               >
                 {row.getVisibleCells().map((cell) => (
                   <td key={cell.id} className="px-4 py-2 align-top">
@@ -98,19 +116,22 @@ export function RaffleSalesTab({ purchases }: Props) {
               </tr>
 
               {row.getIsExpanded() && (
-                <tr>
-                  <td colSpan={columns.length} className="bg-gray-50 px-6 py-4">
+                <tr className="border-t border-zinc-200 dark:border-zinc-700">
+                  <td colSpan={columns.length} className="bg-zinc-50 px-6 py-4 dark:bg-zinc-800/60">
                     <div className="space-y-4">
                       {row.original.obj_Packages.map((pkg, idx) => (
-                        <div key={idx} className="border border-gray-200 rounded p-4">
-                          <div className="text-sm font-semibold text-gray-700 mb-2">
-                            {pkg.VC_Description} – ${pkg.Dec_Price} – {pkg.Int_NumbTicket} tickets
+                        <div
+                          key={idx}
+                          className="rounded border border-zinc-200 p-4 dark:border-zinc-700 dark:bg-zinc-900/50"
+                        >
+                          <div className="mb-2 text-sm font-semibold text-zinc-800 dark:text-zinc-100">
+                            {pkg.VC_Description} – ${Number(pkg.Dec_Price).toFixed(2)} – {pkg.Int_NumbTicket} tickets
                           </div>
-                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 text-xs text-gray-600">
+                          <div className="grid grid-cols-2 gap-2 text-xs text-zinc-600 md:grid-cols-3 lg:grid-cols-4 dark:text-zinc-300">
                             {pkg.obj_Tickets.map((ticket, i) => (
                               <span
                                 key={i}
-                                className="inline-block px-2 py-1 bg-white border border-gray-200 rounded"
+                                className="inline-block rounded border border-zinc-200 bg-white px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
                               >
                                 {ticket}
                               </span>

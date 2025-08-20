@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 @plugin "@tailwindcss/typography";
 
-@theme {
+:root {
   --font-sans: Inter, sans-serif;
   --font-sans--font-feature-settings: 'cv11';
 }

@@ -3,35 +3,49 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 
-const PUBLIC_PATHS = [
+/**
+ * Exact public pages (no params)
+ */
+const PUBLIC_PAGES = new Set<string>([
   '/login',
   '/forgot-password',
-  // add more public routes here if needed
+])
+
+/**
+ * Public URL prefixes (with dynamic segments after)
+ * e.g., /users/reset-password/<key1>/<key2>
+ */
+const PUBLIC_PREFIXES = [
+  '/users/reset-password',
 ]
 
 function isPublicPath(pathname: string) {
-  return PUBLIC_PATHS.some(p => pathname.startsWith(p))
+  if (PUBLIC_PAGES.has(pathname)) return true
+  return PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))
 }
 
 export async function middleware(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
   const { pathname } = req.nextUrl
 
-  // Decide the base response first (next or redirects)
   let response: NextResponse
 
-  if (token && isPublicPath(pathname)) {
-    // Logged-in user visiting a public auth page → send to app
-    response = NextResponse.redirect(new URL('/', req.url))
-  } else if (!token && !isPublicPath(pathname)) {
-    // Not logged in and path is protected → send to login
+  // If the path is public (including reset-password), always allow
+  if (isPublicPath(pathname)) {
+    // Optional: if logged in and visiting /login or /forgot-password, redirect to app
+    if (token && (pathname === '/login' || pathname === '/forgot-password')) {
+      response = NextResponse.redirect(new URL('/', req.url))
+    } else {
+      response = NextResponse.next()
+    }
+  } else if (!token) {
+    // Protected route and not logged in → go to login
     response = NextResponse.redirect(new URL('/login', req.url))
   } else {
-    // Allowed to proceed
     response = NextResponse.next()
   }
 
-  // ✅ Sync rememberMe cookie onto httpOnly cookie on whichever response we’re returning
+  // Keep your rememberMe cookie sync
   const rememberMeFromClient = req.cookies.get('rememberMeForward')?.value
   if (rememberMeFromClient !== undefined) {
     response.cookies.set('rememberMe', rememberMeFromClient, {
@@ -47,8 +61,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Let code handle which routes are public; run middleware for most pages
-  matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
-  ],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 }
