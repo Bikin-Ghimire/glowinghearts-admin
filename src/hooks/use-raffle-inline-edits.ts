@@ -3,12 +3,20 @@
 
 import { useSession } from 'next-auth/react'
 import { getTokenFromSession } from './use-session-token'
+import {
+  PRIZE_TYPES,
+  type PrizePayload as PrizePayloadRules,
+  type RaffleCore as RaffleCoreRules,
+  type Prize as PrizeRulesType,
+  canDeletePrize,
+  normalizeAndValidatePrizeUpdate,
+} from '@/lib/prize-rules'
 
 type RaffleCorePayload = {
   VC_LicenseNumb: string
   VC_RaffleName: string
   VC_RaffleLocation: string
-  Dt_SaleOpen: string // "YYYY-MM-DD HH:mm:ss"
+  Dt_SaleOpen: string
   Dt_SaleClose: string
   Int_TimeFrame: number
   Int_UnClaimedTimeOut: number
@@ -21,7 +29,7 @@ type PrizePayload = {
   VC_Description: string
   Int_PrizeValuePercent: number
   Dec_Value: number
-  Dt_Draw: string // "YYYY-MM-DD HH:mm:ss"
+  Dt_Draw: string
 }
 
 type BuyInPayload = {
@@ -42,7 +50,10 @@ export function useRaffleInlineEdits() {
     return fetch(input, { ...init, headers })
   }
 
-  // 1) Core raffle
+  // ---------------------------
+  // Core, details, rules, buy-ins… (unchanged)
+  // ---------------------------
+
   async function updateRaffleCore(raffleId: string, payload: RaffleCorePayload) {
     const res = await authedFetch(`${process.env.NEXT_PUBLIC_API_URL}/Raffle/${raffleId}`, {
       method: 'PUT',
@@ -52,7 +63,6 @@ export function useRaffleInlineEdits() {
     return res.json()
   }
 
-  // 2) Details
   async function updateDetails(raffleId: string, html: string) {
     const res = await authedFetch(`${process.env.NEXT_PUBLIC_API_URL}/Raffle/Details/${raffleId}`, {
       method: 'PUT',
@@ -62,7 +72,6 @@ export function useRaffleInlineEdits() {
     return res.json()
   }
 
-  // 3) Rules
   async function updateRules(raffleId: string, htmlOrText: string) {
     const res = await authedFetch(`${process.env.NEXT_PUBLIC_API_URL}/Raffle/Rules/${raffleId}`, {
       method: 'PUT',
@@ -72,17 +81,6 @@ export function useRaffleInlineEdits() {
     return res.json()
   }
 
-  // 4) Prize
-  async function updatePrize(prizeId: string, payload: PrizePayload) {
-    const res = await authedFetch(`${process.env.NEXT_PUBLIC_API_URL}/Prize/${prizeId}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    })
-    if (!res.ok) throw new Error(await res.text())
-    return res.json()
-  }
-
-  // 5) Buy-In
   async function updateBuyIn(buyInId: string, payload: BuyInPayload) {
     const res = await authedFetch(`${process.env.NEXT_PUBLIC_API_URL}/BuyIn/${buyInId}`, {
       method: 'PUT',
@@ -92,7 +90,14 @@ export function useRaffleInlineEdits() {
     return res.json()
   }
 
-  // 6) Banner
+  async function deleteBuyIn(buyInId: string) {
+    const res = await authedFetch(`${process.env.NEXT_PUBLIC_API_URL}/BuyIn/${buyInId}`, {
+      method: 'DELETE',
+    })
+    if (!res.ok) throw new Error(await res.text())
+    return res.json()
+  }
+
   async function updateBanner(raffleId: string, url: string) {
     const res = await authedFetch(`${process.env.NEXT_PUBLIC_API_URL}/Banner/`, {
       method: 'POST',
@@ -106,8 +111,54 @@ export function useRaffleInlineEdits() {
     return res.json()
   }
 
-  // 7) Delete Prize
-  async function deletePrize(prizeId: string) {
+  // ---------------------------
+  // Prize: SAFE EDIT & DELETE
+  // ---------------------------
+
+  /**
+   * Safe wrapper that enforces all prize rules before PUT.
+   * @param prizeId target prize id
+   * @param payload proposed changes (may include user-edited fields)
+   * @param ctx includes raffle core & full prize list (from useRaffleDetails)
+   */
+  async function updatePrizeSafe(
+    prizeId: string,
+    payload: PrizePayload,
+    ctx: { raffle: RaffleCoreRules; prizes: PrizeRulesType[] }
+  ) {
+    // Validate + normalize (auto-fill hidden fields)
+    const result = normalizeAndValidatePrizeUpdate(
+      payload as PrizePayloadRules,
+      ctx.raffle,
+      ctx.prizes as PrizeRulesType[],
+      prizeId
+    )
+    if (!result.ok) {
+      throw new Error(result.errors.join('\n'))
+    }
+
+    const res = await authedFetch(`${process.env.NEXT_PUBLIC_API_URL}/Prize/${prizeId}`, {
+      method: 'PUT',
+      body: JSON.stringify(result.normalized),
+    })
+    if (!res.ok) throw new Error(await res.text())
+    return res.json()
+  }
+
+  /**
+   * Safe delete: blocks deleting Place 1.
+   */
+  async function deletePrizeSafe(
+    prizeId: string,
+    ctx: { prizes: PrizeRulesType[] }
+  ) {
+    const prize = ctx.prizes.find(p => p.Guid_PrizeId === prizeId)
+    if (!prize) throw new Error('Prize not found.')
+
+    if (!canDeletePrize(prize)) {
+      throw new Error('You cannot delete the main prize (Place 1).')
+    }
+
     const res = await authedFetch(`${process.env.NEXT_PUBLIC_API_URL}/Prize/${prizeId}`, {
       method: 'DELETE',
     })
@@ -115,9 +166,22 @@ export function useRaffleInlineEdits() {
     return res.json()
   }
 
-  // 8) Delete Buy-In (Bundle)
-  async function deleteBuyIn(buyInId: string) {
-    const res = await authedFetch(`${process.env.NEXT_PUBLIC_API_URL}/BuyIn/${buyInId}`, {
+  // Backward compatibility (if you still call the raw versions anywhere)
+  async function updatePrize(prizeId: string, payload: PrizePayload) {
+    // If called directly, this will NOT enforce rules.
+    // Prefer updatePrizeSafe with context to enforce rules.
+    const res = await authedFetch(`${process.env.NEXT_PUBLIC_API_URL}/Prize/${prizeId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) throw new Error(await res.text())
+    return res.json()
+  }
+
+  async function deletePrize(prizeId: string) {
+    // If called directly, this will NOT enforce rules.
+    // Prefer deletePrizeSafe with context to enforce rules.
+    const res = await authedFetch(`${process.env.NEXT_PUBLIC_API_URL}/Prize/${prizeId}`, {
       method: 'DELETE',
     })
     if (!res.ok) throw new Error(await res.text())
@@ -128,10 +192,12 @@ export function useRaffleInlineEdits() {
     updateRaffleCore,
     updateDetails,
     updateRules,
-    updatePrize,
+    updatePrize,          // legacy
+    updatePrizeSafe,      // ✅ use this
     updateBuyIn,
-    updateBanner,
-    deletePrize,
     deleteBuyIn,
+    updateBanner,
+    deletePrize,          // legacy
+    deletePrizeSafe,      // ✅ use this
   }
 }

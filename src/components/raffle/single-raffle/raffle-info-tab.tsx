@@ -5,6 +5,7 @@ import { Dialog, DialogActions, DialogBody, DialogDescription, DialogTitle } fro
 import RichTextEditorTiptap from '@/components/rich-text'
 import { usePrizeActions } from '@/hooks/use-prize-actions'
 import { useRaffleInlineEdits } from '@/hooks/use-raffle-inline-edits'
+import { PRIZE_TYPES, type PrizeType } from '@/lib/prize-rules'
 import { toLocalISO, toServerDT } from '@/lib/validators'
 import { PencilSquareIcon } from '@heroicons/react/16/solid'
 import { ShowMore } from '@re-dev/react-truncate'
@@ -12,7 +13,6 @@ import { format } from 'date-fns'
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { Badge } from '../../badge'
-
 
 type Props = {
   raffle: any
@@ -24,6 +24,16 @@ type Props = {
 type ActionType = 'paid' | 'donate'
 const NOTE_MAX = 1000
 
+type PrizeFormState = {
+  Int_Place: number
+  Int_Prize_Type: PrizeType
+  Int_AutomatedDraw: number
+  VC_Description: string
+  Int_PrizeValuePercent: number
+  Dec_Value: number
+  Dt_DrawISO: string
+}
+
 const statusMap: Record<number, { label: string; color: string }> = {
   1: { label: 'Not Drawn', color: 'zinc' },
   2: { label: 'Winner Drawn', color: 'lime' },
@@ -34,16 +44,18 @@ const statusMap: Record<number, { label: string; color: string }> = {
 
 export function RaffleInfoTab({ raffle, prizes, buyIns, onUpdated }: Props) {
   const { data: session } = useSession()
-  const access = Number((session as any)?.user?.charityAccess?.[0]?.Int_UserAccess ?? 3) // <- adjust if needed
+  const access = Number((session as any)?.user?.charityAccess?.[0]?.Int_UserAccess ?? 3)
   const canControlByRole = access === 1 || access === 2
   const canEditByStatus = raffle?.Int_DrawStatus === 1
   const canEdit = canControlByRole && canEditByStatus
 
   const { markPaidOut, markDonated, loadingId, error } = usePrizeActions()
-  const { updateDetails, updateRules, updatePrize, updateBuyIn, deletePrize, deleteBuyIn } = useRaffleInlineEdits()
+  const { updateDetails, updateRules, updatePrizeSafe, updateBuyIn, deletePrizeSafe, deleteBuyIn } =
+    useRaffleInlineEdits()
+
   const [localError, setLocalError] = useState<string | null>(null)
 
-  // Local mirrors for instant UI updates
+  // Local mirrors
   const [rows, setRows] = useState<any[]>(prizes)
   const [bundles, setBundles] = useState<any[]>(buyIns)
   const [details, setDetails] = useState<string>(raffle?.Txt_GameDetails || '')
@@ -59,14 +71,14 @@ export function RaffleInfoTab({ raffle, prizes, buyIns, onUpdated }: Props) {
   const [rowType, setRowType] = useState<'prize' | 'bundle' | null>(null)
   const [rowId, setRowId] = useState<string | null>(null)
   const [savingRow, setSavingRow] = useState(false)
-  const [prizeForm, setPrizeForm] = useState({
+  const [prizeForm, setPrizeForm] = useState<PrizeFormState>({
     Int_Place: 1,
-    Int_Prize_Type: 1,
+    Int_Prize_Type: PRIZE_TYPES.FIFTY_FIFTY_CASH as PrizeType,
     Int_AutomatedDraw: 1,
     VC_Description: '',
     Int_PrizeValuePercent: 0,
     Dec_Value: 0,
-    Dt_DrawISO: '', // datetime-local string
+    Dt_DrawISO: '',
   })
   const [bundleForm, setBundleForm] = useState({
     Int_NumbTicket: 1,
@@ -74,17 +86,43 @@ export function RaffleInfoTab({ raffle, prizes, buyIns, onUpdated }: Props) {
     VC_Description: '',
   })
 
-  const startISO = toLocalISO(raffle.Dt_SalesOpen || raffle.Dt_SaleOpen)
+  // Sales windows
+  const startISO = toLocalISO(raffle.Dt_SaleOpen || raffle.Dt_SalesOpen)
+  const endISO = toLocalISO(raffle.Dt_SaleClose || raffle.Dt_SalesClose)
   const minDrawPicker = startISO || new Date().toISOString().slice(0, 16)
 
+  const mainPrize = rows.find((p) => Number(p.Int_Place) === 1) || null
+
+  function getMinDrawISOForPrize(place: number) {
+    // Place 1: draw must be AFTER sales end
+    if (place === 1 && endISO) {
+      return endISO
+    }
+    // Others: on/after sales start
+    return minDrawPicker
+  }
+
+  function getMaxDrawISOForPrize(place: number) {
+    // Others must be BEFORE Place 1 draw
+    if (place !== 1 && mainPrize?.Dt_Draw) {
+      return toLocalISO(mainPrize.Dt_Draw)
+    }
+    return ''
+  }
+
   function openPrizeEditor(p: any) {
+    const place = Number(p.Int_Place ?? 1)
+    const type = Number(p.Int_Prize_Type ?? PRIZE_TYPES.FIFTY_FIFTY_CASH) as PrizeType
+    const vc = (p.VC_Description ?? '').trim()
+    const desc = type === PRIZE_TYPES.FIFTY_FIFTY_CASH && !vc ? '50% of Total Jackpot' : (p.VC_Description ?? '')
+
     setRowType('prize')
     setRowId(p.Guid_PrizeId)
     setPrizeForm({
-      Int_Place: Number(p.Int_Place ?? 1),
-      Int_Prize_Type: Number(p.Int_Prize_Type ?? 1),
+      Int_Place: place,
+      Int_Prize_Type: type,
       Int_AutomatedDraw: Number(p.Int_AutomatedDraw ?? 1),
-      VC_Description: p.VC_Description ?? '',
+      VC_Description: desc,
       Int_PrizeValuePercent: Number(p.Int_PrizeValuePercent ?? 0),
       Dec_Value: Number(p.Dec_Value ?? 0),
       Dt_DrawISO: toLocalISO(p.Dt_Draw),
@@ -134,12 +172,13 @@ export function RaffleInfoTab({ raffle, prizes, buyIns, onUpdated }: Props) {
     setDelLabel(b.VC_Description || 'this bundle')
     setDelOpen(true)
   }
+
   async function confirmDelete() {
     if (!delOpen || !delType || !delId) return
     setDeleting(true)
     try {
       if (delType === 'prize') {
-        await deletePrize(delId)
+        await deletePrizeSafe(delId, { prizes: rows }) // rules-enforced
         setRows((prev) => prev.filter((p) => p.Guid_PrizeId !== delId))
       } else {
         await deleteBuyIn(delId)
@@ -149,7 +188,7 @@ export function RaffleInfoTab({ raffle, prizes, buyIns, onUpdated }: Props) {
       setDelId(null)
       setDelType(null)
       setDelLabel('')
-      onUpdated?.() // auto-refetch to sync everything (stats/logs/etc.)
+      onUpdated?.()
     } catch (e: any) {
       setLocalError(e?.message || 'Delete failed.')
     } finally {
@@ -157,14 +196,27 @@ export function RaffleInfoTab({ raffle, prizes, buyIns, onUpdated }: Props) {
     }
   }
 
-  // Row validations
+  // Row validations (client-side UX; server still validates)
   const prizeValid =
     rowType !== 'prize' ||
-    (String(prizeForm.VC_Description).trim() &&
-      Number.isFinite(prizeForm.Dec_Value) &&
-      prizeForm.Dec_Value >= 0 &&
-      prizeForm.Int_Place >= 1 &&
-      (prizeForm.Dt_DrawISO ? new Date(prizeForm.Dt_DrawISO).getTime() >= new Date(minDrawPicker).getTime() : true))
+    (() => {
+      const hasDesc = !!prizeForm.VC_Description.trim()
+      const is50 = prizeForm.Int_Prize_Type === PRIZE_TYPES.FIFTY_FIFTY_CASH
+      const amountOk = is50 ? true : prizeForm.Dec_Value > 0
+      const dt = prizeForm.Dt_DrawISO ? new Date(prizeForm.Dt_DrawISO) : null
+      const minISO = getMinDrawISOForPrize(prizeForm.Int_Place)
+      const maxISO = getMaxDrawISOForPrize(prizeForm.Int_Place)
+      const afterMin = dt ? dt.getTime() >= new Date(minISO).getTime() : true
+      const beforeMax = dt && maxISO ? dt.getTime() < new Date(maxISO).getTime() : true
+
+      const typeOk =
+        prizeForm.Int_Place === 1
+          ? prizeForm.Int_Prize_Type === PRIZE_TYPES.FIFTY_FIFTY_CASH ||
+            prizeForm.Int_Prize_Type === PRIZE_TYPES.PRIZE_RAFFLE
+          : prizeForm.Int_Prize_Type === PRIZE_TYPES.PRIZE_RAFFLE || prizeForm.Int_Prize_Type === PRIZE_TYPES.EARLY_BIRD
+
+      return hasDesc && amountOk && typeOk && afterMin && beforeMax
+    })()
 
   const bundleValid =
     rowType !== 'bundle' ||
@@ -182,36 +234,31 @@ export function RaffleInfoTab({ raffle, prizes, buyIns, onUpdated }: Props) {
     setSavingRow(true)
     try {
       if (rowType === 'prize') {
-        const existingPrize = rows.find((p) => p.Guid_PrizeId === rowId)
-        await updatePrize(
-          rowId,
-          {
-            Int_Place: Number(prizeForm.Int_Place),
-            Int_Prize_Type: Number(prizeForm.Int_Prize_Type),
-            Int_AutomatedDraw: Number(prizeForm.Int_AutomatedDraw),
-            VC_Description: prizeForm.VC_Description.trim(),
-            Int_PrizeValuePercent: Number(prizeForm.Int_PrizeValuePercent),
-            Dec_Value: Number(prizeForm.Dec_Value),
-            Dt_Draw: prizeForm.Dt_DrawISO ? toServerDT(prizeForm.Dt_DrawISO) : '',
+        const payload = {
+          Int_Place: Number(prizeForm.Int_Place),
+          Int_Prize_Type: Number(prizeForm.Int_Prize_Type),
+          Int_AutomatedDraw: Number(prizeForm.Int_AutomatedDraw),
+          VC_Description: prizeForm.VC_Description.trim(),
+          Int_PrizeValuePercent: Number(prizeForm.Int_PrizeValuePercent),
+          Dec_Value: Number(prizeForm.Dec_Value),
+          Dt_Draw: prizeForm.Dt_DrawISO ? toServerDT(prizeForm.Dt_DrawISO) : '',
+        }
+
+        await updatePrizeSafe(rowId, payload, {
+          raffle: {
+            Dt_SaleOpen: raffle.Dt_SaleOpen || raffle.Dt_SalesOpen, // <-- add fallback
+            Dt_SaleClose: raffle.Dt_SaleClose || raffle.Dt_SalesClose, // <-- add fallback
           },
-          {
-            raffle: { Dt_SaleOpen: raffle.Dt_SaleOpen, Dt_SaleClose: raffle.Dt_SaleClose },
-            prizes: rows,
-            existingPrize,
-          }
-        )
+          prizes: rows,
+        })
+
         setRows((prev) =>
           prev.map((p) =>
             p.Guid_PrizeId === rowId
               ? {
                   ...p,
-                  Int_Place: prizeForm.Int_Place,
-                  Int_Prize_Type: prizeForm.Int_Prize_Type,
-                  Int_AutomatedDraw: prizeForm.Int_AutomatedDraw,
-                  VC_Description: prizeForm.VC_Description,
-                  Int_PrizeValuePercent: prizeForm.Int_PrizeValuePercent,
-                  Dec_Value: prizeForm.Dec_Value,
-                  Dt_Draw: prizeForm.Dt_DrawISO ? toServerDT(prizeForm.Dt_DrawISO) : p.Dt_Draw,
+                  ...payload,
+                  Dt_Draw: payload.Dt_Draw || p.Dt_Draw,
                 }
               : p
           )
@@ -238,6 +285,7 @@ export function RaffleInfoTab({ raffle, prizes, buyIns, onUpdated }: Props) {
       setRowOpen(false)
       setLocalError(null)
       alert('Saved.')
+      onUpdated?.()
     } catch (e: any) {
       setLocalError(e?.message || 'Failed to save.')
     } finally {
@@ -245,7 +293,7 @@ export function RaffleInfoTab({ raffle, prizes, buyIns, onUpdated }: Props) {
     }
   }
 
-  // Details / Rules edit dialog (use your Tiptap component)
+  // Details / Rules editor
   const [textOpen, setTextOpen] = useState(false)
   const [textKind, setTextKind] = useState<'details' | 'rules' | null>(null)
   const [textVal, setTextVal] = useState('') // HTML
@@ -274,6 +322,7 @@ export function RaffleInfoTab({ raffle, prizes, buyIns, onUpdated }: Props) {
       setTextOpen(false)
       setLocalError(null)
       alert('Saved.')
+      onUpdated?.()
     } catch (e: any) {
       setLocalError(e?.message || 'Failed to save text.')
     } finally {
@@ -281,7 +330,7 @@ export function RaffleInfoTab({ raffle, prizes, buyIns, onUpdated }: Props) {
     }
   }
 
-  // Existing Prize status (kept)
+  // Existing Paid/Donated Dialog state
   const [open, setOpen] = useState(false)
   const [action, setAction] = useState<ActionType | null>(null)
   const [prizeId, setPrizeId] = useState<string | null>(null)
@@ -317,10 +366,10 @@ export function RaffleInfoTab({ raffle, prizes, buyIns, onUpdated }: Props) {
     )
     setLocalError(null)
     resetDialog()
+    onUpdated?.()
   }
 
   const renderActionButton = (prize: any) => {
-    // Viewers (3) cannot see prize controls
     if (!canControlByRole) return null
     const status = Number(prize.Int_Prize_Status)
     const isLoading = loadingId === prize.Guid_PrizeId
@@ -441,7 +490,11 @@ export function RaffleInfoTab({ raffle, prizes, buyIns, onUpdated }: Props) {
                         <span>{prize.VC_Description}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm">${prize.Dec_Value}</td>
+                    <td className="px-4 py-3 text-sm">
+                      {Number(prize.Int_Prize_Type) === PRIZE_TYPES.FIFTY_FIFTY_CASH
+                        ? '50% of total jackpot'
+                        : `$${prize.Dec_Value}`}
+                    </td>
                     <td className="px-4 py-3 text-sm">
                       {prize.Dt_Draw && prize.Dt_Draw !== '0000-00-00 00:00:00'
                         ? format(new Date(prize.Dt_Draw), 'MMMM d, yyyy h:mm a')
@@ -542,27 +595,41 @@ export function RaffleInfoTab({ raffle, prizes, buyIns, onUpdated }: Props) {
 
           {rowType === 'prize' ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {/* <label className="text-sm">Place
-                <input type="number" min={1} className="w-full rounded-md border p-2"
-                  value={prizeForm.Int_Place}
-                  onChange={(e)=>setPrizeForm({...prizeForm, Int_Place:Math.max(1, Number(e.target.value||1))})} required />
-              </label> */}
+              {/* Place is locked/hidden from UI */}
+
               <label className="text-sm">
                 Prize Type
-                <input
-                  type="number"
-                  min={1}
+                <select
                   className="w-full rounded-md border p-2"
                   value={prizeForm.Int_Prize_Type}
-                  onChange={(e) => setPrizeForm({ ...prizeForm, Int_Prize_Type: Number(e.target.value || 1) })}
+                  onChange={(e) => {
+                    const nextType = Number(e.target.value) as PrizeType
+                    const nextDesc =
+                      nextType === PRIZE_TYPES.FIFTY_FIFTY_CASH && !prizeForm.VC_Description.trim()
+                        ? '50% of Total Jackpot'
+                        : prizeForm.VC_Description
+                    setPrizeForm({
+                      ...prizeForm,
+                      Int_Prize_Type: nextType,
+                      VC_Description: nextDesc,
+                    })
+                  }}
                   required
-                />
+                >
+                  {prizeForm.Int_Place === 1 ? (
+                    <>
+                      <option value={PRIZE_TYPES.FIFTY_FIFTY_CASH}>50/50 Cash Prize</option>
+                      <option value={PRIZE_TYPES.PRIZE_RAFFLE}>Prize Raffle</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value={PRIZE_TYPES.PRIZE_RAFFLE}>Prize Raffle</option>
+                      <option value={PRIZE_TYPES.EARLY_BIRD}>Earlybird Raffle</option>
+                    </>
+                  )}
+                </select>
               </label>
-              {/* <label className="text-sm">Automated Draw
-                <input type="number" min={0} className="w-full rounded-md border p-2"
-                  value={prizeForm.Int_AutomatedDraw}
-                  onChange={(e)=>setPrizeForm({...prizeForm, Int_AutomatedDraw:Number(e.target.value||0)})} required />
-              </label> */}
+
               <label className="text-sm sm:col-span-2">
                 Description
                 <input
@@ -573,46 +640,60 @@ export function RaffleInfoTab({ raffle, prizes, buyIns, onUpdated }: Props) {
                 />
                 {!prizeForm.VC_Description.trim() && <p className="mt-1 text-xs text-red-600">Required</p>}
               </label>
-              <label className="text-sm">
-                Value is %
-                <input
-                  type="number"
-                  min={0}
-                  max={1}
-                  className="w-full rounded-md border p-2"
-                  value={prizeForm.Int_PrizeValuePercent}
-                  onChange={(e) =>
-                    setPrizeForm({
-                      ...prizeForm,
-                      Int_PrizeValuePercent: Math.min(1, Math.max(0, Number(e.target.value || 0))),
-                    })
-                  }
-                  required
-                />
-              </label>
-              <label className="text-sm">
-                Value
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  className="w-full rounded-md border p-2"
-                  value={prizeForm.Dec_Value}
-                  onChange={(e) => setPrizeForm({ ...prizeForm, Dec_Value: Math.max(0, Number(e.target.value || 0)) })}
-                  required
-                />
-              </label>
+
+              {prizeForm.Int_Prize_Type === PRIZE_TYPES.FIFTY_FIFTY_CASH ? (
+                <div className="text-sm sm:col-span-2">
+                  <div className="font-medium">Value</div>
+                  <div className="mt-1 rounded-md border bg-zinc-50 p-2 dark:bg-zinc-800">
+                    50% of total jackpot (auto)
+                  </div>
+                </div>
+              ) : (
+                <label className="text-sm">
+                  Value
+                  <input
+                    type="number"
+                    min={0.01}
+                    step="0.01"
+                    className="w-full rounded-md border p-2"
+                    value={prizeForm.Dec_Value}
+                    onChange={(e) =>
+                      setPrizeForm({ ...prizeForm, Dec_Value: Math.max(0, Number(e.target.value || 0)) })
+                    }
+                    required
+                  />
+                  {!(prizeForm.Dec_Value > 0) && <p className="mt-1 text-xs text-red-600">Enter a positive amount.</p>}
+                </label>
+              )}
+
               <label className="text-sm sm:col-span-2">
-                Draw (date & time)
+                Draw (date &amp; time)
                 <input
                   type="datetime-local"
                   className="w-full rounded-md border p-2"
                   value={prizeForm.Dt_DrawISO}
-                  min={minDrawPicker}
+                  min={getMinDrawISOForPrize(prizeForm.Int_Place)}
+                  max={getMaxDrawISOForPrize(prizeForm.Int_Place) || undefined}
                   onChange={(e) => setPrizeForm({ ...prizeForm, Dt_DrawISO: e.target.value })}
                 />
-                {prizeForm.Dt_DrawISO && new Date(prizeForm.Dt_DrawISO) < new Date(minDrawPicker) && (
-                  <p className="mt-1 text-xs text-red-600">Draw must be on/after sales start.</p>
+                {prizeForm.Int_Place === 1 ? (
+                  prizeForm.Dt_DrawISO &&
+                  endISO &&
+                  new Date(prizeForm.Dt_DrawISO) <= new Date(endISO) && (
+                    <p className="mt-1 text-xs text-red-600">Main prize draw must be after sales end.</p>
+                  )
+                ) : (
+                  <>
+                    {prizeForm.Dt_DrawISO &&
+                      new Date(prizeForm.Dt_DrawISO) < new Date(getMinDrawISOForPrize(prizeForm.Int_Place)) && (
+                        <p className="mt-1 text-xs text-red-600">Draw must be on/after sales start.</p>
+                      )}
+                    {prizeForm.Dt_DrawISO &&
+                      getMaxDrawISOForPrize(prizeForm.Int_Place) &&
+                      new Date(prizeForm.Dt_DrawISO) >= new Date(getMaxDrawISOForPrize(prizeForm.Int_Place)!) && (
+                        <p className="mt-1 text-xs text-red-600">Draw must be before the main prize draw.</p>
+                      )}
+                  </>
                 )}
               </label>
             </div>
@@ -678,7 +759,7 @@ export function RaffleInfoTab({ raffle, prizes, buyIns, onUpdated }: Props) {
         </DialogActions>
       </Dialog>
 
-      {/* Details/Rules dialog (Tiptap) */}
+      {/* Details/Rules dialog */}
       <Dialog open={textOpen} onClose={() => setTextOpen(false)} size="lg" aria-label="Edit text">
         <DialogTitle>{textKind === 'details' ? 'Edit Game Details' : 'Edit Game Rules'}</DialogTitle>
         <DialogDescription>HTML supported. Use the editor below.</DialogDescription>
@@ -727,7 +808,7 @@ export function RaffleInfoTab({ raffle, prizes, buyIns, onUpdated }: Props) {
         </DialogActions>
       </Dialog>
 
-      {/* Existing Paid/Donated Dialog (unchanged except RBAC implicitly affects buttons) */}
+      {/* Paid/Donated dialog */}
       <Dialog open={open} onClose={resetDialog} size="md" aria-label="Add note for status change">
         <DialogTitle className="text-zinc-900 dark:text-zinc-100">
           {action === 'paid' ? 'Mark Prize as Paid Out' : 'Mark Prize as Donated'}
