@@ -17,12 +17,12 @@ export async function fetchRaffleDetail(session: any, Guid_RaffleId: string) {
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/Report/Tickets/${Guid_RaffleId}`, {
       method: 'PUT',
       headers,
-      body: JSON.stringify({}), // pass required body here, if needed
+      body: JSON.stringify({}),
     }),
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/Report/Except_Raffle/${Guid_RaffleId}`, {
       method: 'PUT',
       headers,
-      body: JSON.stringify({}), // pass required body here, if needed
+      body: JSON.stringify({}),
     }),
   ])
 
@@ -34,8 +34,6 @@ export async function fetchRaffleDetail(session: any, Guid_RaffleId: string) {
     purchasesRes.ok ? purchasesRes.json() : [],
     logsRes.ok ? logsRes.json() : [],
   ])
-
-  console.log('logsData:', logsData)
 
   return {
     raffle: Array.isArray(raffleData?.obj_Raffles) ? raffleData.obj_Raffles[0] : null,
@@ -67,8 +65,7 @@ export async function updateRaffleStatus({
     return
   }
   try {
-    const res = await apiFn(id, token)
-    console.log('Backend response:', res)
+    await apiFn(id, token)
   } catch (err) {
     console.error('Failed to update raffle status:', err)
     alert('Failed to update raffle on server.')
@@ -88,31 +85,17 @@ export async function updateRaffleStatus({
 export async function activateRaffle(id: string, token: string) {
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Raffle/Activate/${id}`, {
     method: 'PUT',
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: { Authorization: `Bearer ${token}` },
   })
-
-  if (!res.ok) {
-    const errText = await res.text()
-    throw new Error(`Activate failed: ${res.status} - ${errText}`)
-  }
-
+  if (!res.ok) throw new Error(`Activate failed: ${res.status} - ${await res.text()}`)
   return res.json()
 }
 
 export async function deactivateRaffle(id: string, token: string) {
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Raffle/DeActivate/${id}`, {
     method: 'PUT',
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: { Authorization: `Bearer ${token}` },
   })
-
-  if (!res.ok) {
-    const errText = await res.text()
-    throw new Error(`Deactivate failed: ${res.status} - ${errText}`)
-  }
-
+  if (!res.ok) throw new Error(`Deactivate failed: ${res.status} - ${await res.text()}`)
   return res.json()
 }

@@ -38,7 +38,13 @@ export default function RafflePage({ params: { Guid_RaffleId } }: Params) {
         onDeactivate={() => handleDeactivate(raffle.Guid_RaffleId)}
       />
       <RaffleStats raffle={raffle} />
-      <RaffleTabs raffle={raffle} logs={logs} purchases={purchases} prizes={prizes} buyIns={buyIns} />
+      <RaffleTabs
+        raffle={raffle}
+        logs={logs}
+        purchases={purchases}
+        prizes={prizes}
+        buyIns={buyIns}
+      />
     </>
   )
 }
