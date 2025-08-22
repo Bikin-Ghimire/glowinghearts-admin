@@ -10,6 +10,7 @@ import {
   type Prize as PrizeRulesType,
   canDeletePrize,
   normalizeAndValidatePrizeUpdate,
+  normalizeAndValidatePrizeCreate,
 } from '@/lib/prize-rules'
 
 type RaffleCorePayload = {
@@ -188,16 +189,45 @@ export function useRaffleInlineEdits() {
     return res.json()
   }
 
+  async function createPrizeSafe(
+    raffleId: string,
+    draft: Omit<PrizePayloadRules, 'Int_Place'> & { Int_Place?: number },
+    ctx: { raffle: RaffleCoreRules; prizes: PrizeRulesType[] }
+  ) {
+    const result = normalizeAndValidatePrizeCreate(
+      draft,
+      ctx.raffle,
+      ctx.prizes
+    )
+    if (!result.ok) throw new Error(result.errors.join('\n'))
+
+    const res = await authedFetch(`${process.env.NEXT_PUBLIC_API_URL}/Prize/${raffleId}`, {
+      method: 'POST',
+      body: JSON.stringify(result.normalized),
+    })
+    if (!res.ok) throw new Error(await res.text())
+    return res.json() // expect created prize back
+  }
+
+  async function createBuyIn(raffleId: string, payload: { Int_NumbTicket: number; Dec_Price: number; VC_Description: string }) {
+    const res = await authedFetch(`${process.env.NEXT_PUBLIC_API_URL}/BuyIn/${raffleId}`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) throw new Error(await res.text())
+    return res.json() // expect created buy-in back
+  }
+
   return {
     updateRaffleCore,
     updateDetails,
     updateRules,
-    updatePrize,          // legacy
-    updatePrizeSafe,      // ✅ use this
+    createPrizeSafe,
+    updatePrizeSafe,
+    deletePrizeSafe,
+    createBuyIn,
     updateBuyIn,
     deleteBuyIn,
     updateBanner,
-    deletePrize,          // legacy
-    deletePrizeSafe,      // ✅ use this
   }
 }
