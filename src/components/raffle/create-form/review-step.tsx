@@ -87,8 +87,10 @@ export default function ReviewStep({
               <p>Type: {prizeTypeMap[prize?.type] || 'Unknown'}</p>
               <p>Name: {prize?.name || '—'}</p>
               <p>
-                Amount: {prize?.amount ?? '—'}
-                {prize?.isPercentage ? '%' : ''}
+                Amount: {' '}
+                {Number(prize?.type) === 1
+                ? '50% of Total Jackpot'
+                : (prize?.amount !== undefined && prize?.amount !== '' ? prize.amount : '—')}
               </p>
               <p>Draw Date: {fmt(prize?.drawDate)}</p>
               <hr className="my-2 border-zinc-200 dark:border-zinc-700" />

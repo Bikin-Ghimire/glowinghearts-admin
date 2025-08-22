@@ -53,8 +53,8 @@ export function useCreateRaffle({
   const router = useRouter()
 
   const formatPrizesForAPI = () => {
-    const sorted = [...prizes].sort((a, b) => new Date(a.drawDate).getTime() - new Date(b.drawDate).getTime())
-    return sorted.map((p, i) => ({
+    // const sorted = [...prizes].sort((a, b) => new Date(a.drawDate).getTime() - new Date(b.drawDate).getTime())
+    return prizes.map((p, i) => ({
       Int_Place: i + 1,
       Int_Prize_Type: p.type,
       Int_AutomatedDraw: 1,
