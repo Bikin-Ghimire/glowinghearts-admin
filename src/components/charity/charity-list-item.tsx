@@ -42,7 +42,7 @@ export default function CharityListItem({ charity, session, refetchCharities }: 
         </div>
         <div className="flex items-center gap-4">
           <Badge color={color}>{label}</Badge>
-          {[1, 2].includes(user?.charityAccess?.[0]?.Int_UserAccess ?? 0) && (
+          {/* {[1, 2].includes(user?.charityAccess?.[0]?.Int_UserAccess ?? 0) && (
             <Dropdown>
               <DropdownButton plain aria-label="More options">
                 <EllipsisVerticalIcon />
@@ -67,7 +67,7 @@ export default function CharityListItem({ charity, session, refetchCharities }: 
                 </DropdownSection>
               </DropdownMenu>
             </Dropdown>
-          )}
+          )} */}
         </div>
       </div>
     </li>
