@@ -1,7 +1,3 @@
-export const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: '2023-10-16'
-});
-
 // utils/statusMaps.ts
 export const charityStatusMap: Record<number, { label: string; color: 'lime' | 'red' | 'zinc' }> = {
   1: { label: 'Active', color: 'lime' },

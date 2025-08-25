@@ -1,7 +1,7 @@
 import { authOptions } from '@/lib/auth-options'
 import { getTokenFromSession } from '@/hooks/use-session-token'
 import { sendEmail } from '@/lib/email'
-import { stripe } from '@/lib/utils'
+import { stripe } from '@/lib/stripe-server'
 import { getServerSession } from 'next-auth/next'
 import { NextRequest, NextResponse } from 'next/server'
 
