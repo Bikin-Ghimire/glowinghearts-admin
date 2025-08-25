@@ -1,27 +1,50 @@
-// lib/sendEmail.ts
-import nodemailer from 'nodemailer'
+// src/lib/email.ts
+import 'server-only'
+import nodemailer, { Transporter } from 'nodemailer'
 
 function parseBool(v: string | undefined, fallback: boolean) {
   if (v === undefined) return fallback
   return ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())
 }
 
-const host = process.env.EMAIL_HOST
-const port = Number(process.env.EMAIL_PORT || 465)
-const secure = parseBool(process.env.EMAIL_SECURE, port === 465) // true for 465, false for 587 by default
-const user = process.env.EMAIL_USER
-const pass = process.env.EMAIL_PASS
-
-if (!host || !user || !pass) {
-  throw new Error('SMTP env vars missing: EMAIL_HOST, EMAIL_USER, EMAIL_PASS')
+type SmtpCfg = {
+  host?: string
+  port?: number
+  secure?: boolean
+  user?: string
+  pass?: string
+  from?: string
 }
 
-const transporter = nodemailer.createTransport({
-  host,
-  port,
-  secure,
-  auth: { user, pass },
-})
+function readSmtpEnv(): SmtpCfg {
+  return {
+    host: process.env.EMAIL_HOST,
+    port: Number(process.env.EMAIL_PORT || 465),
+    secure: parseBool(process.env.EMAIL_SECURE, true),
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+    from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+  }
+}
+
+let transporter: Transporter | null = null
+
+function getTransport(): Transporter | null {
+  if (transporter) return transporter
+  const cfg = readSmtpEnv()
+  if (!cfg.host || !cfg.user || !cfg.pass) {
+    // Don’t throw: we’ll skip send and log a warning instead.
+    return null
+  }
+
+  transporter = nodemailer.createTransport({
+    host: cfg.host,
+    port: cfg.port,
+    secure: cfg.secure,
+    auth: { user: cfg.user, pass: cfg.pass },
+  })
+  return transporter
+}
 
 export interface SendEmailOptions {
   to: string
@@ -32,17 +55,30 @@ export interface SendEmailOptions {
   replyTo?: string
 }
 
-export async function sendEmail({ to, subject, html, text, from, replyTo }: SendEmailOptions) {
-  const fromAddr = from || process.env.EMAIL_FROM || process.env.EMAIL_USER!
-  const info = await transporter.sendMail({
-    from: fromAddr, // e.g. "Glowing Hearts <no-reply@yourdomain.com>"
-    to,
-    subject,
-    html,
-    text,
-    replyTo,
-  })
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('Email sent:', info.messageId)
+export async function sendEmail(opts: SendEmailOptions) {
+  const rid = Math.random().toString(36).slice(2, 8)
+  const tx = getTransport()
+  if (!tx) {
+    console.warn(`[email:${rid}] SMTP not configured (EMAIL_HOST/USER/PASS). Skipping email to ${opts.to}.`)
+    return { ok: false as const, skipped: true as const, reason: 'missing_smtp_env', rid }
+  }
+
+  const fromAddr = opts.from || process.env.EMAIL_FROM || process.env.EMAIL_USER!
+  try {
+    const info = await tx.sendMail({
+      from: fromAddr,
+      to: opts.to,
+      subject: opts.subject,
+      html: opts.html,
+      text: opts.text,
+      replyTo: opts.replyTo,
+    })
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[email:${rid}] Sent`, info.messageId)
+    }
+    return { ok: true as const, messageId: info.messageId, rid }
+  } catch (err: any) {
+    console.error(`[email:${rid}] send failed`, err?.message || err)
+    return { ok: false as const, error: err?.message || String(err), rid }
   }
 }
