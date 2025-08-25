@@ -1,7 +1,7 @@
 // app/api/send-onboarding-link/route.ts
 import { authOptions } from '@/lib/auth-options'
 import { getTokenFromSession } from '@/hooks/use-session-token'
-import { sendEmail } from '@/lib/email'
+// import { sendEmail } from '@/lib/email'
 import { stripe } from '@/lib/stripe-server'
 import { getServerSession } from 'next-auth/next'
 import { NextRequest, NextResponse } from 'next/server'
@@ -149,28 +149,38 @@ export async function POST(req: NextRequest) {
 
     // --- 7) Send email (don’t fail the whole flow if email provider flakes) ---
     try {
-      await sendEmail({
-        to: email,
-        subject: `Complete your Stripe onboarding for Glowing Hearts Fundraising`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #eee; border-radius: 8px;">
-            <h2 style="color: #333;">Welcome to Glowing Hearts Fundraising Portal</h2>
-            <p style="font-size: 16px; color: #444;">Hi${charityName ? ` ${charityName}` : ''},</p>
-            <p style="font-size: 16px; color: #444;">
-              To start receiving funds from raffle ticket sales, please complete your onboarding with Stripe.
-            </p>
-            <div style="text-align: center; margin: 24px 0;">
-              <a href="${accountLink.url}" target="_blank" style="background-color: #8b5cf6; color: white; padding: 14px 24px; text-decoration: none; border-radius: 6px; font-size: 16px;">
-                Complete Stripe Onboarding
-              </a>
+      const emailMod = await import ('@/lib/email').catch(() => null)
+      const sendEmail = emailMod?.sendEmail
+
+      if (!sendEmail) {
+        console.warn(`[${rid}] module not available. Skipping email sending`)
+      } else {
+        const result = await sendEmail({
+          to: email,
+          subject: `Complete your Stripe onboarding for Glowing Hearts Fundraising`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #eee; border-radius: 8px;">
+              <h2 style="color: #333;">Welcome to Glowing Hearts Fundraising Portal</h2>
+              <p style="font-size: 16px; color: #444;">Hi${charityName ? ` ${charityName}` : ''},</p>
+              <p style="font-size: 16px; color: #444;">
+                To start receiving funds from raffle ticket sales, please complete your onboarding with Stripe.
+              </p>
+              <div style="text-align: center; margin: 24px 0;">
+                <a href="${accountLink.url}" target="_blank" style="background-color: #8b5cf6; color: white; padding: 14px 24px; text-decoration: none; border-radius: 6px; font-size: 16px;">
+                  Complete Stripe Onboarding
+                </a>
+              </div>
+              <p style="font-size: 16px; color: #444;">
+                This link expires after it’s used or if it times out. If you need another link, reply to this email.
+              </p>
+              <p style="font-size: 14px; color: #666;">— Glowing Hearts Fundraising Team</p>
             </div>
-            <p style="font-size: 16px; color: #444;">
-              This link expires after it’s used or if it times out. If you need another link, reply to this email.
-            </p>
-            <p style="font-size: 14px; color: #666;">— Glowing Hearts Fundraising Team</p>
-          </div>
-        `,
-      })
+          `,
+        })
+        if ((result as any)?.skipped) {
+          console.warn(`[${rid}] sendEmail skipped: ${(result as any).reason}`)
+        }
+      }
     } catch (e) {
       console.error(`[${rid}] sendEmail failed`, e)
       // still return success (onboarding link created & account saved)
