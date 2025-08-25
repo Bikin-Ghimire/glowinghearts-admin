@@ -112,11 +112,11 @@ export function ApplicationLayout({ children }: { children: React.ReactNode }) {
                   </SidebarItem>
                 </>
               )}
-              <SidebarDivider />
+              {/* <SidebarDivider />
               <SidebarItem href="/reports" current={pathname.startsWith('/reports')}>
                 <SparklesIcon />
                 <SidebarLabel>Reports</SidebarLabel>
-              </SidebarItem>
+              </SidebarItem> */}
             </SidebarSection>
           </SidebarBody>
 

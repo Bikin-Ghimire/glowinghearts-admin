@@ -1,9 +1,8 @@
 // app/api/admin/refunds/route.ts
 import 'server-only'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth-options'
 import { getStripe } from '@/lib/stripe-server'
+import { getTokenFromSessionSafe } from '@/lib/api-bearer'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -14,20 +13,17 @@ function jsonError(message: string, status = 400, rid?: string) {
   return res
 }
 
-// Server-safe token getter (avoid importing hooks from /hooks/*)
-async function getTokenFromSessionSafe() {
-  const session = await getServerSession(authOptions)
-  // Adjust to where your token actually lives on the session:
-  // @ts-ignore
-  return session?.accessToken || session?.token || session?.user?.token || null
-}
-
 /**
  * Looks up purchase→ { accountId, paymentIntentId, raffleGuid } from your backend.
  * If Guid_IntentId is empty but the purchaseGuid is a Checkout Session id (cs_...),
  * derives PI by retrieving the Checkout Session from Stripe (with Connect header).
  */
-async function fetchPurchaseMapping(rid: string, token: string, purchaseGuid: string, stripe: import('stripe').Stripe) {
+async function fetchPurchaseMapping(
+  rid: string,
+  bearerHeaderValue: string, // <-- already "Bearer <jwt>"
+  purchaseGuid: string,
+  stripe: import('stripe').Stripe
+) {
   const api = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '')
   if (!api) throw new Error('Missing NEXT_PUBLIC_API_URL')
 
@@ -35,7 +31,10 @@ async function fetchPurchaseMapping(rid: string, token: string, purchaseGuid: st
   let res: Response
   try {
     res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      headers: {
+        Authorization: bearerHeaderValue, // <-- pass as-is (NO extra "Bearer")
+        'Content-Type': 'application/json',
+      },
       cache: 'no-store',
     })
   } catch (e: any) {
@@ -88,9 +87,9 @@ export async function POST(req: NextRequest) {
       return jsonError('Server misconfig: Stripe not configured', 500, rid)
     }
 
-    // Auth/token
-    const token = await getTokenFromSessionSafe()
-    if (!token) return jsonError('Unauthorized', 401, rid)
+    // Auth/token  (this returns "Bearer <jwt>" or null)
+    const bearer = await getTokenFromSessionSafe(rid)
+    if (!bearer) return jsonError('Unauthorized', 401, rid)
 
     // Body
     let body: { purchaseGuid?: string; amount?: number; note?: string }
@@ -105,7 +104,7 @@ export async function POST(req: NextRequest) {
     // Lookup mapping
     const { accountId, paymentIntentId, raffleGuid } = await fetchPurchaseMapping(
       rid,
-      token,
+      bearer,           // <-- pass as-is
       purchaseGuid,
       stripe
     )
@@ -120,8 +119,8 @@ export async function POST(req: NextRequest) {
         {
           payment_intent: paymentIntentId,
           amount: amountInCents,
-          // refund_application_fee: true, // enable if needed for your fee model
-          // reverse_transfer: true,       // enable if you used destination charges and need reversal
+          // refund_application_fee: true,
+          // reverse_transfer: true,
           metadata: {
             purchase_guid: purchaseGuid,
             raffle_guid: raffleGuid ?? '',
@@ -142,7 +141,6 @@ export async function POST(req: NextRequest) {
       return jsonError(`Stripe error: ${e?.raw?.message || e?.message || 'refund failed'}`, 502, rid)
     }
 
-    // Webhook will update your backend
     const res = NextResponse.json({
       ok: true,
       status: 'initiated',
