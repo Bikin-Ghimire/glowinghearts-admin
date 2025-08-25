@@ -18,7 +18,7 @@ async function callUserCheck(email: string, password: string) {
   if (!apiBase) throw new Error('API base URL not configured')
   const bearer = buildApiBearerFromCreds(email, password)
 
-  const res = await fetch(`${apiBase}/user/Check`, {
+  const res = await fetch(`process.env.NEXT_PUBLIC_API_URL/user/Check`, {
     method: 'GET', // ⬅ change to 'POST' if your API needs it
     headers: { Authorization: bearer },
     cache: 'no-store',
