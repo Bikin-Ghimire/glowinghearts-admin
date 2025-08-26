@@ -11,6 +11,9 @@ export function useRaffleDetails(Guid_RaffleId: string) {
   const [buyIns, setBuyIns] = useState<any[]>([])
   const [purchases, setPurchases] = useState<any[]>([])
   const [logs, setLogs] = useState<any[]>([])
+  const [ticketLogs, setTicketLogs] = useState<any[]>([])
+  const [prizeLogs, setPrizeLogs] = useState<any[]>([])
+  const [buyInLogs, setBuyInLogs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -28,6 +31,9 @@ export function useRaffleDetails(Guid_RaffleId: string) {
       setBuyIns(data.buyIns)
       setPurchases(data.purchases)
       setLogs(data.logs)
+      setTicketLogs(data.ticketLogs)
+      setPrizeLogs(data.prizeLogs)
+      setBuyInLogs(data.buyInLogs)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -47,6 +53,9 @@ export function useRaffleDetails(Guid_RaffleId: string) {
     buyIns,
     purchases,
     logs,
+    ticketLogs,
+    prizeLogs,
+    buyInLogs,
     loading,
     error,
   }

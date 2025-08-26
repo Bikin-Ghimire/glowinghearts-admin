@@ -19,6 +19,9 @@ export default function RafflePage({ params: { Guid_RaffleId } }: Params) {
     buyIns,
     purchases,
     logs,
+    ticketLogs,
+    prizeLogs,
+    buyInLogs,
     loading,
     error,
   } = useRaffleDetails(Guid_RaffleId)
@@ -44,6 +47,9 @@ export default function RafflePage({ params: { Guid_RaffleId } }: Params) {
         purchases={purchases}
         prizes={prizes}
         buyIns={buyIns}
+        ticketLogs={ticketLogs}
+        prizeLogs={prizeLogs}
+        buyInLogs={buyInLogs}
       />
     </>
   )
