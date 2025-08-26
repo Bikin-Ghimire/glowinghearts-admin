@@ -3,7 +3,17 @@
 
 import { usePurchaseDetails } from '@/hooks/use-purchase-details'
 import type { PackageItem } from '@/lib/purchases'
-import { EnvelopeIcon, PhoneIcon, UserIcon } from '@heroicons/react/16/solid'
+import {
+  EnvelopeIcon,
+  PhoneIcon,
+  UserIcon,
+  MapPinIcon,
+  HomeIcon,
+  GlobeAltIcon,
+  ComputerDesktopIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+} from '@heroicons/react/16/solid'
 import {
   ColumnDef,
   createColumnHelper,
@@ -83,6 +93,23 @@ export function RaffleSalesTab({ purchases, raffleId }: Props) {
 
   const activeDetails = useMemo(() => (activePurchaseId ? peek(activePurchaseId) : null), [activePurchaseId, peek])
 
+  function StatusPill({ ok, label }: { ok: boolean | number | undefined; label: string }) {
+    const isOk = ok === 1 || ok === true
+    return (
+      <span
+        className={[
+          'inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-medium ring-1 ring-inset',
+          isOk
+            ? 'bg-green-50 text-green-700 ring-green-600/20 dark:bg-green-900/15 dark:text-green-300 dark:ring-green-800/40'
+            : 'bg-red-50 text-red-700 ring-red-600/20 dark:bg-red-900/20 dark:text-red-300 dark:ring-red-900/40',
+        ].join(' ')}
+      >
+        {isOk ? <CheckCircleIcon className="h-3.5 w-3.5" /> : <XCircleIcon className="h-3.5 w-3.5" />}
+        {label}
+      </span>
+    )
+  }
+
   return (
     <>
       <div className="overflow-x-auto rounded border border-zinc-200 shadow-sm dark:border-zinc-700">
@@ -155,7 +182,7 @@ export function RaffleSalesTab({ purchases, raffleId }: Props) {
                                 Purchaser
                               </div>
 
-                              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                              <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
                                 {/* Purchaser line */}
                                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
                                   <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-2 py-1 text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100">
@@ -164,11 +191,12 @@ export function RaffleSalesTab({ purchases, raffleId }: Props) {
                                   </span>
 
                                   <a
-                                    href={`mailto:${det.VC_PlayerEmail}`}
+                                    href={det.VC_PlayerEmail ? `mailto:${det.VC_PlayerEmail}` : undefined}
+                                    onClick={(e) => !det.VC_PlayerEmail && e.preventDefault()}
                                     className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-2 py-1 text-zinc-800 underline decoration-dotted underline-offset-2 hover:bg-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 dark:focus-visible:ring-indigo-600"
                                   >
                                     <EnvelopeIcon className="h-4 w-4 opacity-80" />
-                                    {det.VC_PlayerEmail}
+                                    {det.VC_PlayerEmail || '—'}
                                   </a>
 
                                   {det.VC_PlayerPhone && (
@@ -182,34 +210,76 @@ export function RaffleSalesTab({ purchases, raffleId }: Props) {
                                   )}
                                 </div>
 
-                                {/* Actions */}
-                                <div className="flex flex-wrap gap-2">
-                                  <button
-                                    type="button"
-                                    className="inline-flex items-center rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm ring-1 ring-red-700/40 ring-inset hover:bg-red-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 dark:ring-red-900/60"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      setActivePurchaseId(pid)
-                                      setRefundOpen(true)
-                                    }}
-                                    aria-label="Refund this purchase"
-                                  >
-                                    Refund
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    className="inline-flex items-center rounded-md border border-amber-500 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 shadow-sm hover:bg-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 dark:border-amber-600 dark:bg-amber-900/20 dark:text-amber-200 dark:hover:bg-amber-900/30"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      // TODO: call your future voidTickets() service here
-                                      alert('Void Tickets API not yet implemented.')
-                                    }}
-                                    aria-label="Void tickets for this purchase"
-                                  >
-                                    Void Tickets
-                                  </button>
+                                {/* Status pills */}
+                                <div className="flex flex-wrap justify-start gap-2 md:justify-end">
+                                  <StatusPill ok={det.Int_AgeVerified} label="Age Verified" />
+                                  <StatusPill ok={det.Int_TC_Confirmed} label="T&C Accepted" />
                                 </div>
+                              </div>
+
+                              {/* Address & Meta */}
+                              <div className="mt-3 grid gap-2 md:grid-cols-2">
+                                <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-800/60">
+                                  <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                    <HomeIcon className="h-3.5 w-3.5" />
+                                    Address
+                                  </div>
+                                  <div className="text-xs text-zinc-700 dark:text-zinc-200">
+                                    <div>{det.VC_PlayerAddr1 || '—'}</div>
+                                    {det.VC_PlayerAddr2 ? <div>{det.VC_PlayerAddr2}</div> : null}
+                                    <div>
+                                      {(det.VC_PlayerCity || '—')}{' '}
+                                      {det.VC_PlayerProvince ? `, ${det.VC_PlayerProvince}` : ''}{' '}
+                                      {det.VC_PlayerPostalCode ? ` ${det.VC_PlayerPostalCode}` : ''}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-800/60">
+                                  <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                    <GlobeAltIcon className="h-3.5 w-3.5" />
+                                    Location & Device
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-700 dark:text-zinc-200">
+                                    <span className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900">
+                                      <MapPinIcon className="h-4 w-4 opacity-80" />
+                                      {det.VC_GeoLocation || '—'}
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900">
+                                      <ComputerDesktopIcon className="h-4 w-4 opacity-80" />
+                                      {det.VC_PurchaseIP || '—'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Actions */}
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm ring-1 ring-red-700/40 ring-inset hover:bg-red-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 dark:ring-red-900/60"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setActivePurchaseId(pid)
+                                    setRefundOpen(true)
+                                  }}
+                                  aria-label="Refund this purchase"
+                                >
+                                  Refund
+                                </button>
+
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center rounded-md border border-amber-500 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 shadow-sm hover:bg-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 dark:border-amber-600 dark:bg-amber-900/20 dark:text-amber-200 dark:hover:bg-amber-900/30"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    // TODO: call your future voidTickets() service here
+                                    alert('Void Tickets API not yet implemented.')
+                                  }}
+                                  aria-label="Void tickets for this purchase"
+                                >
+                                  Void Tickets
+                                </button>
                               </div>
                             </div>
                           )}

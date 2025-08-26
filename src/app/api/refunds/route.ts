@@ -1,4 +1,4 @@
-// app/api/admin/refunds/route.ts
+// app/api/refunds/route.ts
 import 'server-only'
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe-server'
