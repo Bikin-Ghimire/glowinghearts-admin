@@ -8,6 +8,7 @@ import { RaffleChangeLogsTab } from './raffle-change-logs'
 import { RaffleTicketLogsTab } from './raffle-ticket-logs'
 import { RafflePrizeLogsTab } from './raffle-prize-logs'
 import { RaffleBuyInLogsTab } from './raffle-buyins-logs'
+import { RaffleRefundsTab } from './raffle-refunds-tab'
 
 type Props = {
   raffle: any
@@ -18,9 +19,10 @@ type Props = {
   ticketLogs: any[]
   prizeLogs: any[]
   buyInLogs: any[]
+  refunds: any[]
 }
 
-export function RaffleTabs({ raffle, purchases, prizes, buyIns, logs, ticketLogs, prizeLogs, buyInLogs }: Props) {
+export function RaffleTabs({ raffle, purchases, prizes, buyIns, logs, ticketLogs, prizeLogs, buyInLogs, refunds }: Props) {
   return (
     <div className="mt-8 text-zinc-900 dark:text-zinc-100">
       <TabGroup>
@@ -46,6 +48,16 @@ export function RaffleTabs({ raffle, purchases, prizes, buyIns, logs, ticketLogs
                          dark:focus-visible:ring-offset-zinc-900 rounded-sm"
             >
               Sales Information
+            </Tab>
+            <Tab
+              className="inline-flex items-center gap-2 border-b-2 border-transparent py-3 text-sm font-medium
+                         text-zinc-600 hover:border-zinc-300 hover:text-zinc-900
+                         focus:outline-none data-[selected]:border-indigo-600 data-[selected]:text-indigo-600
+                         dark:text-zinc-300 dark:hover:text-zinc-100 dark:data-[selected]:text-indigo-400
+                         focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2
+                         dark:focus-visible:ring-offset-zinc-900 rounded-sm"
+            >
+              Refunded Transactions
             </Tab>
             <Tab
               className="inline-flex items-center gap-2 border-b-2 border-transparent py-3 text-sm font-medium
@@ -97,6 +109,9 @@ export function RaffleTabs({ raffle, purchases, prizes, buyIns, logs, ticketLogs
           </TabPanel>
           <TabPanel className="focus:outline-none">
             <RaffleSalesTab purchases={purchases} raffleId={raffle.Guid_RaffleId} />
+          </TabPanel>
+          <TabPanel className="focus:outline-none">
+            <RaffleRefundsTab refunds={refunds} />
           </TabPanel>
           <TabPanel className="focus:outline-none">
             <RaffleChangeLogsTab logs={logs} />
