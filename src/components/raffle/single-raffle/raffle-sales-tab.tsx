@@ -47,21 +47,24 @@ export function RaffleSalesTab({ purchases, raffleId }: Props) {
 
   const [refundOpen, setRefundOpen] = useState(false)
   const [activePurchaseId, setActivePurchaseId] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const [exportErr, setExportErr] = useState<string | null>(null)
 
   const columns: ColumnDef<Purchase, any>[] = [
     columnHelper.accessor('Guid_PurchaseId', {
       header: 'Purchase ID',
-      cell: (info) => info.getValue(),
+      cell: (info) => <span className="break-all whitespace-normal">{info.getValue()}</span>,
     }),
     columnHelper.accessor('Dec_TotalPrice', {
       header: 'Amount Paid',
       cell: (info) => {
         const val = Number(info.getValue())
-        return isNaN(val) ? info.getValue() : `$${val.toFixed(2)}`
+        return <span className="whitespace-nowrap">{isNaN(val) ? info.getValue() : `$${val.toFixed(2)}`}</span>
       },
     }),
     columnHelper.accessor('Int_TotalTickets', {
       header: 'Tickets Purchased',
+      cell: (info) => <span className="whitespace-nowrap">{info.getValue()}</span>,
     }),
     columnHelper.accessor('Dt_Purchased', {
       header: 'Purchase Date',
@@ -87,8 +90,7 @@ export function RaffleSalesTab({ purchases, raffleId }: Props) {
 
   function handleRowToggle(purchaseId: string, toggle: () => void) {
     toggle()
-    // lazily fetch details (cached in the hook)
-    void get(purchaseId)
+    void get(purchaseId) // lazily fetch details (cached)
   }
 
   const activeDetails = useMemo(() => (activePurchaseId ? peek(activePurchaseId) : null), [activePurchaseId, peek])
@@ -110,18 +112,143 @@ export function RaffleSalesTab({ purchases, raffleId }: Props) {
     )
   }
 
+  // --- CSV helpers ---
+  function csvEscape(v: unknown): string {
+    if (v === null || v === undefined) return ''
+    let s = String(v)
+    if (s.includes('"')) s = s.replace(/"/g, '""')
+    if (/[",\n]/.test(s)) s = `"${s}"`
+    return s
+  }
+
+  function formatDateISO(dt?: string) {
+    if (!dt || dt === '0000-00-00 00:00:00') return ''
+    const d = new Date(dt)
+    if (isNaN(d.getTime())) return dt
+    return d.toISOString()
+  }
+
+  async function downloadCSV() {
+    try {
+      setExportErr(null)
+      setExporting(true)
+
+      // Ensure details are fetched for all purchases
+      await Promise.allSettled(purchases.map((p) => get(p.Guid_PurchaseId)))
+
+      const headers = [
+        'Purchase ID',
+        'Purchase Date (ISO)',
+        'Amount Paid',
+        'Tickets Purchased',
+        'Buyer Name',
+        'Buyer Email',
+        'Buyer Phone',
+        'Addr1',
+        'Addr2',
+        'City',
+        'Province',
+        'Postal Code',
+        'Age Verified',
+        'T&C Accepted',
+        'Geo Location',
+        'Purchase IP',
+        'Bundles (desc)',
+        'Tickets (all)',
+        'Stripe Payment Intent',
+      ]
+
+      const rows = purchases.map((p) => {
+        const d = peek(p.Guid_PurchaseId) ?? ({} as any)
+        const bundles = (d?.obj_Packages ?? p.obj_Packages ?? []) as PackageItem[]
+        const bundleDescs = bundles.map((b) => b?.VC_Description).filter(Boolean).join(' | ')
+        const allTickets = bundles
+          .flatMap((b) => b?.obj_Tickets ?? [])
+          .filter(Boolean)
+          .join(' ')
+
+        const amount = isNaN(Number(p.Dec_TotalPrice)) ? p.Dec_TotalPrice : Number(p.Dec_TotalPrice).toFixed(2)
+
+        const vals = [
+          p.Guid_PurchaseId,
+          formatDateISO(p.Dt_Purchased),
+          amount,
+          p.Int_TotalTickets,
+          d?.VC_PlayerFullName ?? '',
+          d?.VC_PlayerEmail ?? '',
+          d?.VC_PlayerPhone ?? '',
+          d?.VC_PlayerAddr1 ?? '',
+          d?.VC_PlayerAddr2 ?? '',
+          d?.VC_PlayerCity ?? '',
+          d?.VC_PlayerProvince ?? '',
+          d?.VC_PlayerPostalCode ?? '',
+          d?.Int_AgeVerified === 1 ? 'Yes' : d?.Int_AgeVerified === 0 ? 'No' : '',
+          d?.Int_TC_Confirmed === 1 ? 'Yes' : d?.Int_TC_Confirmed === 0 ? 'No' : '',
+          d?.VC_GeoLocation ?? '',
+          d?.VC_PurchaseIP ?? '',
+          bundleDescs,
+          allTickets,
+          d?.Guid_IntentId ?? '',
+        ]
+        return vals.map(csvEscape).join(',')
+      })
+
+      const csv = [headers.map(csvEscape).join(','), ...rows].join('\n')
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const date = new Date().toISOString().slice(0, 10)
+      a.href = url
+      a.download = `raffle-${raffleId}-sales-${date}.csv`
+      document.body.appendChild(a)
+      a.click()
+      URL.revokeObjectURL(url)
+      a.remove()
+    } catch (e: any) {
+      setExportErr(e?.message || 'Failed to export CSV')
+      // (optional) you can also console.error(e)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <>
-      <div className="overflow-x-auto rounded border border-zinc-200 shadow-sm dark:border-zinc-700">
-        <table className="min-w-[1200px] text-left text-sm text-zinc-900 dark:text-zinc-100">
-          {/* Header */}
-          <thead className="sticky top-0 z-10 bg-zinc-50/95 backdrop-blur dark:bg-zinc-900/80">
+      {/* Top bar: CSV export button */}
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Sales</div>
+        <div className="flex items-center gap-2">
+          {exportErr && (
+            <span className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
+              {exportErr}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={downloadCSV}
+            disabled={exporting || purchases.length === 0}
+            className={[
+              'inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm ring-1 ring-indigo-700/40 ring-inset',
+              'hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300',
+              'disabled:cursor-not-allowed disabled:opacity-60',
+            ].join(' ')}
+            aria-label="Download sales as CSV"
+            title="Download sales as CSV"
+          >
+            {exporting ? 'Preparing CSV…' : 'Download CSV'}
+          </button>
+        </div>
+      </div>
+
+      <div className="rounded border border-zinc-200 shadow-sm dark:border-zinc-700">
+        <table className="w-full table-auto text-left text-sm text-zinc-900 dark:text-zinc-100">
+          <thead className="bg-zinc-50 dark:bg-zinc-900/80">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id} className="border-b border-zinc-200 dark:border-zinc-700">
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="px-4 py-3 font-semibold whitespace-nowrap text-zinc-900 dark:text-zinc-50"
+                    className="px-4 py-3 text-[13px] font-semibold text-zinc-900 dark:text-zinc-50"
                   >
                     {flexRender(header.column.columnDef.header, header.getContext())}
                   </th>
@@ -130,20 +257,18 @@ export function RaffleSalesTab({ purchases, raffleId }: Props) {
             ))}
           </thead>
 
-          {/* Body */}
           <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-800 dark:bg-zinc-900">
             {table.getRowModel().rows.map((row) => {
               const pid = row.original.Guid_PurchaseId
               const det = peek(pid)
               const s = status(pid)
               const err = error(pid)
-
               const packagesToShow = (det?.obj_Packages?.length ? det.obj_Packages : row.original.obj_Packages) ?? []
 
               return (
                 <React.Fragment key={row.id}>
                   <tr
-                    className="cursor-pointer focus-within:bg-zinc-50 hover:bg-zinc-50 dark:focus-within:bg-zinc-800/70 dark:hover:bg-zinc-800/70"
+                    className="cursor-pointer align-top hover:bg-zinc-50 focus-within:bg-zinc-50 dark:hover:bg-zinc-800/70 dark:focus-within:bg-zinc-800/70"
                     onClick={() => handleRowToggle(pid, row.toggleExpanded)}
                     aria-expanded={row.getIsExpanded()}
                     tabIndex={0}
@@ -273,7 +398,6 @@ export function RaffleSalesTab({ purchases, raffleId }: Props) {
                                   className="inline-flex items-center rounded-md border border-amber-500 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 shadow-sm hover:bg-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 dark:border-amber-600 dark:bg-amber-900/20 dark:text-amber-200 dark:hover:bg-amber-900/30"
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    // TODO: call your future voidTickets() service here
                                     alert('Void Tickets API not yet implemented.')
                                   }}
                                   aria-label="Void tickets for this purchase"
@@ -328,7 +452,7 @@ export function RaffleSalesTab({ purchases, raffleId }: Props) {
         totalAmount={activePurchaseId ? peek(activePurchaseId)?.Dec_TotalPrice : undefined}
         onSuccess={async () => {
           if (activePurchaseId) {
-            await refresh(activePurchaseId) // re-fetch details for this row
+            await refresh(activePurchaseId)
           }
         }}
       />
