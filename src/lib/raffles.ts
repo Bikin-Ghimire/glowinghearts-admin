@@ -31,9 +31,10 @@ export async function fetchRaffleDetail(session: any, Guid_RaffleId: string) {
     buyInsRes,
     purchasesRes,
     logsRes,
-    ticketLogsRes, // NEW
-    prizeLogsRes,  // NEW
-    buyInLogsRes,  // NEW
+    ticketLogsRes,
+    prizeLogsRes,
+    buyInLogsRes,
+    refundRes,
   ] = await Promise.all([
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/Raffle/${Guid_RaffleId}`, { headers }),
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/Banner/${Guid_RaffleId}/50`, { headers }),
@@ -46,6 +47,7 @@ export async function fetchRaffleDetail(session: any, Guid_RaffleId: string) {
     fetchJsonPUT(`${process.env.NEXT_PUBLIC_API_URL}/Report/Except_Tickets/${Guid_RaffleId}`, headers),
     fetchJsonPUT(`${process.env.NEXT_PUBLIC_API_URL}/Report/Except_Prizes/${Guid_RaffleId}`, headers),
     fetchJsonPUT(`${process.env.NEXT_PUBLIC_API_URL}/Report/Except_BuyIns/${Guid_RaffleId}`, headers),
+    fetchJsonPUT(`${process.env.NEXT_PUBLIC_API_URL}/Report/Refunds/${Guid_RaffleId}`, headers),
   ])
 
   const [
@@ -55,9 +57,10 @@ export async function fetchRaffleDetail(session: any, Guid_RaffleId: string) {
     buyInsData,
     purchasesData,
     logsData,
-    ticketLogs, // { ok, status, json }
-    prizeLogs,  // { ok, status, json }
-    buyInLogs,  // { ok, status, json }
+    ticketLogs,
+    prizeLogs,
+    buyInLogs,
+    refunds,
   ] = await Promise.all([
     raffleRes.json(),
     bannerRes.ok ? bannerRes.json() : null,
@@ -68,6 +71,7 @@ export async function fetchRaffleDetail(session: any, Guid_RaffleId: string) {
     Promise.resolve(ticketLogsRes as any),
     Promise.resolve(prizeLogsRes as any),
     Promise.resolve(buyInLogsRes as any),
+    Promise.resolve(refundRes as any),
   ])
 
   // Extract arrays (log and warn if missing/malformed)
@@ -81,6 +85,20 @@ export async function fetchRaffleDetail(session: any, Guid_RaffleId: string) {
     return list
   }
 
+  const extractRefunds = (payload: any) => {
+  const list = Array.isArray(payload?.json?.obj_Refunds) ? payload.json.obj_Refunds : []
+  if (!Array.isArray(list)) {
+    console.warn('[raffles] refunds missing obj_Refunds', {
+      status: payload?.status,
+      keys: payload?.json ? Object.keys(payload.json) : null,
+      sample: payload?.json,
+    })
+  } else {
+    console.debug('[raffles] refunds count', list.length)
+  }
+  return list
+}
+
   return {
     raffle: Array.isArray(raffleData?.obj_Raffles) ? raffleData.obj_Raffles[0] : null,
     bannerUrl: Array.isArray(bannerData?.obj_Banner) ? (bannerData.obj_Banner[0]?.VC_BannerLocation ?? null) : null,
@@ -93,5 +111,6 @@ export async function fetchRaffleDetail(session: any, Guid_RaffleId: string) {
     ticketLogs: extractUpdates('ticketLogs', ticketLogs),
     prizeLogs:  extractUpdates('prizeLogs',  prizeLogs),
     buyInLogs:  extractUpdates('buyInLogs',  buyInLogs),
+    refunds: extractRefunds(refunds),
   }
 }
