@@ -1,8 +1,8 @@
 'use client'
 
-import { Dialog, DialogActions, DialogBody, DialogDescription, DialogTitle } from '@/components/dialog'
 import { Badge } from '@/components/badge'
 import { Button } from '@/components/button'
+import { Dialog, DialogActions, DialogBody, DialogDescription, DialogTitle } from '@/components/dialog'
 import { Heading } from '@/components/heading'
 import { Link } from '@/components/link'
 import { SendOnboardingButton } from '@/components/onboarding-button'
@@ -54,7 +54,13 @@ export function CharityOverview({
       })
 
       const data = await res.json()
-      setStripeStatus(data)
+      setStripeStatus({
+        charges_enabled: !!data.charges_enabled,
+        details_submitted: !!data.details_submitted,
+        payouts_enabled: !!data.payouts_enabled,
+        card_payments: !!data.card_payments,
+        transfers: !!data.transfers,
+      })
     }
 
     fetchStripeStatus()
@@ -85,54 +91,54 @@ export function CharityOverview({
             <div className="mt-2 text-sm/6 text-zinc-500">Charity Key: {charity.VC_CharityKey}</div>
           </div>
         </div>
-        { [1, 2].includes(user?.charityAccess?.[0]?.Int_UserAccess ?? 0) && (
-        <div className="flex gap-4">
-          {charity.Int_CharityStatus !== 1 ? (
-            <Button outline href={`/charities/${charity.Guid_CharityId}/edit`}>
-              Edit
-            </Button>
-          ) : (
-            <div className="group relative">
-              <Button outline disabled>
+        {[1, 2].includes(user?.charityAccess?.[0]?.Int_UserAccess ?? 0) && (
+          <div className="flex gap-4">
+            {charity.Int_CharityStatus !== 1 ? (
+              <Button outline href={`/charities/${charity.Guid_CharityId}/edit`}>
                 Edit
               </Button>
-              <div className="absolute top-full left-1/2 z-10 mt-1 w-max -translate-x-1/2 rounded bg-zinc-800 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100">
-                Deactivate charity to edit details
-              </div>
-            </div>
-          )}
-          {charity.Int_CharityStatus !== 1 && (
-            <div className="group relative">
-              <Button
-                color="green"
-                onClick={() => handleActivate(charity.Guid_CharityId)}
-                disabled={
-                  !stripeStatus?.charges_enabled || !stripeStatus?.details_submitted || !stripeStatus?.payouts_enabled
-                }
-              >
-                Activate
-              </Button>
-              {(!stripeStatus?.charges_enabled ||
-                !stripeStatus?.details_submitted ||
-                !stripeStatus?.payouts_enabled) && (
+            ) : (
+              <div className="group relative">
+                <Button outline disabled>
+                  Edit
+                </Button>
                 <div className="absolute top-full left-1/2 z-10 mt-1 w-max -translate-x-1/2 rounded bg-zinc-800 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100">
-                  Complete Stripe onboarding to activate
+                  Deactivate charity to edit details
                 </div>
-              )}
-            </div>
-          )}
-          {charity.Int_CharityStatus === 1 && (
-            <Button
-              color="red"
-              onClick={() => {
-                setPendingCharityId(charity.Guid_CharityId)
-                setConfirmOpen(true)
-              }}
-            >
-              Deactivate
-            </Button>
-          )}
-        </div>
+              </div>
+            )}
+            {charity.Int_CharityStatus !== 1 && (
+              <div className="group relative">
+                <Button
+                  color="green"
+                  onClick={() => handleActivate(charity.Guid_CharityId)}
+                  disabled={
+                    !stripeStatus?.charges_enabled || !stripeStatus?.details_submitted || !stripeStatus?.payouts_enabled
+                  }
+                >
+                  Activate
+                </Button>
+                {(!stripeStatus?.charges_enabled ||
+                  !stripeStatus?.details_submitted ||
+                  !stripeStatus?.payouts_enabled) && (
+                  <div className="absolute top-full left-1/2 z-10 mt-1 w-max -translate-x-1/2 rounded bg-zinc-800 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100">
+                    Complete Stripe onboarding to activate
+                  </div>
+                )}
+              </div>
+            )}
+            {charity.Int_CharityStatus === 1 && (
+              <Button
+                color="red"
+                onClick={() => {
+                  setPendingCharityId(charity.Guid_CharityId)
+                  setConfirmOpen(true)
+                }}
+              >
+                Deactivate
+              </Button>
+            )}
+          </div>
         )}
       </div>
 
@@ -147,7 +153,11 @@ export function CharityOverview({
       )}
 
       {stripeStatus &&
-        (!stripeStatus.charges_enabled || !stripeStatus.details_submitted || !stripeStatus.payouts_enabled || !stripeStatus.card_payments || !stripeStatus.transfers) && (
+        (!stripeStatus.charges_enabled ||
+          !stripeStatus.details_submitted ||
+          !stripeStatus.payouts_enabled ||
+          !stripeStatus.card_payments ||
+          !stripeStatus.transfers) && (
           <div className="mt-8">
             <Button
               onClick={async () => {

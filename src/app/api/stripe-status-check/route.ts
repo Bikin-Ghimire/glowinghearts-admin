@@ -1,4 +1,3 @@
-// app/api/stripe/status/route.ts
 import 'server-only'
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe-server'
@@ -37,18 +36,29 @@ export async function POST(req: NextRequest) {
 
     const account = await stripe.accounts.retrieve(accountId, { expand: ['capabilities'] })
 
-    const res = NextResponse.json({
+    const cardPaymentsState = account.capabilities?.card_payments
+    const transfersState = account.capabilities?.transfers
+
+    const json = {
       ok: true,
       rid,
       accountId,
-      charges_enabled: account.charges_enabled,
-      details_submitted: account.details_submitted,
-      payouts_enabled: account.payouts_enabled,
-      capabilities: {
-        card_payments: account.capabilities?.card_payments,
-        transfers: account.capabilities?.transfers,
+      charges_enabled: !!account.charges_enabled,
+      details_submitted: !!account.details_submitted,
+      payouts_enabled: !!account.payouts_enabled,
+
+      // normalized booleans for the UI
+      card_payments: cardPaymentsState === 'active',
+      transfers: transfersState === 'active',
+
+      // optional: include raw states for tooltips/debugging
+      capability_states: {
+        card_payments: cardPaymentsState ?? null,
+        transfers: transfersState ?? null,
       },
-    })
+    }
+
+    const res = NextResponse.json(json)
     res.headers.set('X-Request-Id', rid)
     return res
   } catch (error: any) {

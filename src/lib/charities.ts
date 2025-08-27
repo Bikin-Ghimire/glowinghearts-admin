@@ -41,7 +41,7 @@ export async function updateCharityStatus({
 }
 
 export async function activateCharity(id: string, token: string) {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Charities/Activate/${id}`, {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Charity/Activate/${id}`, {
     method: 'PUT',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -57,7 +57,7 @@ export async function activateCharity(id: string, token: string) {
 }
 
 export async function deactivateCharity(id: string, token: string) {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Charities/DeActivate/${id}`, {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Charity/DeActivate/${id}`, {
     method: 'PUT',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -73,7 +73,7 @@ export async function deactivateCharity(id: string, token: string) {
 }
 
 export async function getCharityById(id: string, token: string) {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Charities/${id}`, {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Charity/${id}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
