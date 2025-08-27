@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     if (!stripeAccountId) return jsonError('Missing Stripe Account ID on charity', 400, rid)
 
     // Origin
-    const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001'
+    const origin = process.env.FRONTEND_URL || 'http://localhost:3001'
     if (!/^https?:\/\//i.test(origin)) {
       console.warn(`[${rid}] Invalid origin (${origin}); using http://localhost:3001 fallback`)
     }
