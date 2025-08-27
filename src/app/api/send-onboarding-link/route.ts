@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   try {
     // --- 0) Env checks ---
     const API_URL = process.env.NEXT_PUBLIC_API_URL
-    const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL
+    const BASE_URL = process.env.FRONTEND_URL
     if (!API_URL) {
       console.error(`[${rid}] Missing env: NEXT_PUBLIC_API_URL`)
       return jsonError('Server misconfig: API URL not set', 500, rid)

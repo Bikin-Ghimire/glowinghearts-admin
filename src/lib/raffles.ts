@@ -38,8 +38,8 @@ export async function fetchRaffleDetail(session: any, Guid_RaffleId: string) {
   ] = await Promise.all([
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/Raffle/${Guid_RaffleId}`, { headers }),
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/Banner/${Guid_RaffleId}/50`, { headers }),
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/Prizes/${Guid_RaffleId}`, { headers }),
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/BuyIns/${Guid_RaffleId}`, { headers }),
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/Prize/List/${Guid_RaffleId}`, { headers }),
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/BuyIn/List/${Guid_RaffleId}`, { headers }),
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/Report/Tickets/${Guid_RaffleId}`, { method: 'PUT', headers, body: JSON.stringify({}) }),
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/Report/Except_Raffle/${Guid_RaffleId}`, { method: 'PUT', headers, body: JSON.stringify({}) }),
     fetchJsonPUT(`${process.env.NEXT_PUBLIC_API_URL}/Report/Except_Tickets/${Guid_RaffleId}`, headers),
