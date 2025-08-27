@@ -1,7 +1,4 @@
 'use client'
-// import 'react-quill/dist/quill.snow.css' // Quill base styles
-
-// const ReactQuill = dynamic(() => import('react-quill'), { ssr: false })
 
 import RichTextEditorTiptap from '@/components/rich-text'
 import { useCharityDetails } from '@/hooks/use-charity-details'
@@ -144,7 +141,7 @@ export default function CharityForm({ Guid_CharityId }: CharityFormProps) {
 
       // Create (minimal fields) if new
       if (!isEditMode) {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Charities`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Charity`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ VC_CharityDesc: formData.VC_CharityDesc }),
@@ -159,7 +156,7 @@ export default function CharityForm({ Guid_CharityId }: CharityFormProps) {
       setCreatedCharityId(charityId!)
 
       // Update full details
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Charities/${charityId}`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Charity/${charityId}`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -288,21 +285,6 @@ export default function CharityForm({ Guid_CharityId }: CharityFormProps) {
                   )}
                 </div>
               </div>
-
-              {/* Description (Quill) */}
-              {/* <div className="sm:col-span-6">
-                <label htmlFor="charity-description" className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                  Charity Description
-                </label>
-                <div className="mt-2">
-                  <ReactQuill
-                    theme="snow"
-                    value={formData.Txt_CharityDesc}
-                    onChange={(value) => setFormData({ ...formData, Txt_CharityDesc: value })}
-                    placeholder="Write a description for your charity..."
-                  />
-                </div>
-              </div> */}
 
               <div className="sm:col-span-6">
                 <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">

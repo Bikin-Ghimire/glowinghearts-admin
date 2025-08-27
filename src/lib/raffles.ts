@@ -42,8 +42,6 @@ export async function fetchRaffleDetail(session: any, Guid_RaffleId: string) {
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/BuyIns/${Guid_RaffleId}`, { headers }),
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/Report/Tickets/${Guid_RaffleId}`, { method: 'PUT', headers, body: JSON.stringify({}) }),
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/Report/Except_Raffle/${Guid_RaffleId}`, { method: 'PUT', headers, body: JSON.stringify({}) }),
-
-    // Use robust PUT reader for the three new logs
     fetchJsonPUT(`${process.env.NEXT_PUBLIC_API_URL}/Report/Except_Tickets/${Guid_RaffleId}`, headers),
     fetchJsonPUT(`${process.env.NEXT_PUBLIC_API_URL}/Report/Except_Prizes/${Guid_RaffleId}`, headers),
     fetchJsonPUT(`${process.env.NEXT_PUBLIC_API_URL}/Report/Except_BuyIns/${Guid_RaffleId}`, headers),
@@ -113,4 +111,59 @@ export async function fetchRaffleDetail(session: any, Guid_RaffleId: string) {
     buyInLogs:  extractUpdates('buyInLogs',  buyInLogs),
     refunds: extractRefunds(refunds),
   }
+}
+
+export async function updateRaffleStatus({
+  session,
+  id,
+  newStatus,
+  updateFn,
+  apiFn,
+}: {
+  session: any
+  id: string
+  newStatus: number
+  updateFn: (updater: any) => void
+  apiFn: (id: string, token: string) => Promise<any>
+}) {
+  const token = await getTokenFromSession(session)
+  if (!token) {
+    console.error('Unable to retrieve session token')
+    alert('Unable to retrieve session token.')
+    return
+  }
+  try {
+    await apiFn(id, token)
+  } catch (err) {
+    console.error('Failed to update raffle status:', err)
+    alert('Failed to update raffle on server.')
+    return
+  }
+
+  updateFn((prev: any) => {
+    if (Array.isArray(prev)) {
+      return prev.map((c) => (c.Guid_RaffleId === id ? { ...c, Int_DrawStatus: newStatus } : c))
+    } else if (prev?.Guid_RaffleId === id) {
+      return { ...prev, Int_DrawStatus: newStatus }
+    }
+    return prev
+  })
+}
+
+export async function activateRaffle(id: string, token: string) {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Raffle/Activate/${id}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error(`Activate failed: ${res.status} - ${await res.text()}`)
+  return res.json()
+}
+
+export async function deactivateRaffle(id: string, token: string) {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Raffle/DeActivate/${id}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error(`Deactivate failed: ${res.status} - ${await res.text()}`)
+  return res.json()
 }
