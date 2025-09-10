@@ -11,17 +11,19 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || ''
 
 // --- Simple in-memory de-dupe cache (per server instance) ---
 type CacheEntry = { ts: number }
-const REFUND_TTL_MS = 2 * 60 * 1000 // 2 minutes window
+const REFUND_TTL_MS = 2 * 60 * 1000 // 2 minutes
 const g = globalThis as any
 if (!g.__refundSeen) g.__refundSeen = new Map<string, CacheEntry>()
 const refundSeen: Map<string, CacheEntry> = g.__refundSeen
+
 function recentlyProcessed(key: string) {
   const now = Date.now()
   const entry = refundSeen.get(key)
   if (entry && now - entry.ts < REFUND_TTL_MS) return true
-  // purge old occasionally
   if (refundSeen.size > 1000) {
-    for (const [k, v] of Array.from(refundSeen.entries())) if (now - v.ts >= REFUND_TTL_MS) refundSeen.delete(k)
+    for (const [k, v] of Array.from(refundSeen.entries())) {
+      if (now - v.ts >= REFUND_TTL_MS) refundSeen.delete(k)
+    }
   }
   return false
 }
@@ -62,7 +64,9 @@ async function getBackendJWTFromApp(): Promise<string> {
   try {
     const j = JSON.parse(text)
     token = j?.token || j?.jwt || j?.accessToken || ''
-  } catch { token = text }
+  } catch {
+    token = text
+  }
   if (!token) throw new Error('create-jwt: no token in response')
   return token
 }
@@ -88,7 +92,7 @@ async function extractRefundFromEvent(
     }
     const withMeta = (charge.refunds?.data || []).find((r) => (r.metadata as any)?.purchase_guid)
     if (withMeta) return { refund: withMeta, accountId }
-    const last = (charge.refunds?.data || []).slice().sort((a,b)=>(a.created||0)-(b.created||0)).at(-1)
+    const last = (charge.refunds?.data || []).slice().sort((a, b) => (a.created || 0) - (b.created || 0)).at(-1)
     if (last) {
       const full = await stripe.refunds.retrieve(last.id, {}, accountId ? { stripeAccount: accountId } : undefined)
       return { refund: full, accountId }
@@ -104,8 +108,9 @@ export async function POST(req: NextRequest) {
   const rid = Math.random().toString(36).slice(2, 8)
 
   let stripe: Stripe
-  try { stripe = getStripe() }
-  catch (e: any) {
+  try {
+    stripe = getStripe()
+  } catch (e: any) {
     console.error(`[wh ${rid}] Stripe init failed: ${e?.message || e}`)
     return new NextResponse('Stripe not configured', { status: 500 })
   }
@@ -119,8 +124,9 @@ export async function POST(req: NextRequest) {
   const rawBody = await req.text()
 
   let event: Stripe.Event
-  try { event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret) }
-  catch (err: any) {
+  try {
+    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret)
+  } catch (err: any) {
     console.error(`[wh ${rid}] constructEvent failed`, err?.message || err)
     return new NextResponse(`Webhook Error: ${err?.message || 'invalid signature'}`, { status: 400 })
   }
@@ -135,14 +141,22 @@ export async function POST(req: NextRequest) {
     const purchaseGuid = String(refund.metadata?.purchase_guid ?? '')
     const raffleGuid = String(refund.metadata?.raffle_guid ?? '')
     const note = String(refund.metadata?.admin_note ?? 'Webhook refund')
-    const Dt_Credit = formatAsSqlDatetimeFromUnixSeconds(refund.created || Math.floor(Date.now()/1000))
+    const Dt_Credit = formatAsSqlDatetimeFromUnixSeconds(refund.created || Math.floor(Date.now() / 1000))
 
     console.log(`[wh ${rid}] refund event`, {
-      type: event.type, account: accountId, refundId, paymentIntentId, purchaseGuid, raffleGuid, amountMajor, status: refund.status,
+      type: event.type,
+      account: accountId,
+      refundId,
+      paymentIntentId,
+      purchaseGuid,
+      raffleGuid,
+      amountMajor,
+      status: refund.status,
     })
 
-    if (!purchaseGuid) return NextResponse.json({ received: true, rid, ignored: 'missing_purchase_guid' }) // 200 ignore
-    if (!paymentIntentId) return NextResponse.json({ received: true, rid, ignored: 'missing_payment_intent' }) // 200 ignore
+    // If we can't map it, ignore with 200 to avoid retries (cannot be fixed by retry)
+    if (!purchaseGuid) return NextResponse.json({ received: true, rid, ignored: 'missing_purchase_guid' })
+    if (!paymentIntentId) return NextResponse.json({ received: true, rid, ignored: 'missing_payment_intent' })
 
     // --- De-dupe keys ---
     const keyByRefund = `refund:${refundId}`
@@ -152,7 +166,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true, rid, deduped: true })
     }
 
-    // Build payload
+    // Build payload for your backend
     const payload = {
       Guid_RaffleId: raffleGuid,
       Guid_RefundId: paymentIntentId, // your rule: 1 refund per PI/purchase
@@ -167,10 +181,11 @@ export async function POST(req: NextRequest) {
     // PUT to backend (include Idempotency-Key)
     const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '')
     if (!apiUrl) throw new Error('Missing NEXT_PUBLIC_API_URL')
-    const url = `${apiUrl}/Refund/${encodeURIComponent(purchaseGuid)}`
-    const outHeaders = { 'Content-Type': 'application/json', Authorization: 'Bearer <redacted>' }
+    const url = `${apiUrl}/Purchase/Refund/${encodeURIComponent(purchaseGuid)}`
+
+    const outHeadersLog = { 'Content-Type': 'application/json', Authorization: 'Bearer <redacted>' }
     console.log(`[wh ${rid}] PUT ${url}`)
-    console.log(`[wh ${rid}] headers`, outHeaders)
+    console.log(`[wh ${rid}] headers`, outHeadersLog)
     console.log(`[wh ${rid}] body`, payload)
 
     let res: Response
@@ -183,7 +198,7 @@ export async function POST(req: NextRequest) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${jwt}`,
           'X-Request-Id': rid,
-          'Idempotency-Key': `refund-${refundId}`,   // <-- help your backend dedupe
+          'Idempotency-Key': `refund-${refundId}`, // backend dedupe assist
         },
         body: JSON.stringify(payload),
         cache: 'no-store',
@@ -192,17 +207,30 @@ export async function POST(req: NextRequest) {
       text = await res.text().catch(() => '')
     } catch (e: any) {
       console.error(`[wh ${rid}] PUT network error`, e?.message || e)
+      // Ask Stripe to retry
       return new NextResponse('Backend PUT network error', { status: 502 })
     }
 
     let json: any = null
-    try { json = text ? JSON.parse(text) : null } catch {}
+    try {
+      json = text ? JSON.parse(text) : null
+    } catch {
+      // fall through with json=null
+    }
 
     console.log(`[wh ${rid}] backend response`, { status: res.status, body: json ?? text ?? '(empty)' })
 
-    if (!res.ok) return new NextResponse(`Backend PUT failed: ${res.status} ${text}`, { status: 500 })
-    if (json && typeof json.err_Code === 'number' && json.err_Code !== 0) {
-      // 999 or other backend error → ask Stripe to retry
+    // STRICT ACK POLICY:
+    // - Non-2xx from backend → 500 (retry)
+    // - Missing/invalid JSON or missing err_Code → 500 (retry)
+    // - err_Code !== 0 → 500 (retry)
+    if (!res.ok) {
+      return new NextResponse(`Backend PUT failed: ${res.status} ${text || ''}`.trim(), { status: 500 })
+    }
+    if (!json || typeof json.err_Code !== 'number') {
+      return new NextResponse(`Backend invalid JSON or missing err_Code: ${text || '(empty)'}`, { status: 500 })
+    }
+    if (json.err_Code !== 0) {
       return new NextResponse(`Backend err_Code ${json.err_Code}: ${json.message ?? 'Unknown error'}`, { status: 500 })
     }
 

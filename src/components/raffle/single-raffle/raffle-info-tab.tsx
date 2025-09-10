@@ -5,9 +5,10 @@ import { Dialog, DialogActions, DialogBody, DialogDescription, DialogTitle } fro
 import RichTextEditorTiptap from '@/components/rich-text'
 import { usePrizeActions } from '@/hooks/use-prize-actions'
 import { useRaffleInlineEdits } from '@/hooks/use-raffle-inline-edits'
+import { useTicketDetails } from '@/hooks/use-ticket-details'
 import { PRIZE_TYPES, type PrizeType } from '@/lib/prize-rules'
 import { toLocalISO, toServerDT } from '@/lib/validators'
-import { PencilSquareIcon } from '@heroicons/react/16/solid'
+import { EnvelopeIcon, HomeIcon, PencilSquareIcon, PhoneIcon } from '@heroicons/react/16/solid'
 import { ShowMore } from '@re-dev/react-truncate'
 import { format } from 'date-fns'
 import { useSession } from 'next-auth/react'
@@ -100,6 +101,21 @@ export function RaffleInfoTab({ raffle, prizes, buyIns, onUpdated }: Props) {
   const minDrawPicker = startISO || new Date().toISOString().slice(0, 16)
 
   const mainPrize = rows.find((p) => Number(p.Int_Place) === 1) || null
+
+  const {
+    get: getTicket,
+    peek: peekTicket,
+    status: ticketStatus,
+    error: ticketError,
+  } = useTicketDetails(raffle?.Guid_RaffleId)
+  const [winnerOpen, setWinnerOpen] = useState(false)
+  const [winnerTicketId, setWinnerTicketId] = useState<string | null>(null)
+
+  async function openWinner(ticketId: string) {
+    setWinnerTicketId(ticketId)
+    setWinnerOpen(true)
+    void getTicket(ticketId)
+  }
 
   function getMinDrawISOForPrize(place: number) {
     if (place === 1 && endISO) return endISO
@@ -592,10 +608,27 @@ export function RaffleInfoTab({ raffle, prizes, buyIns, onUpdated }: Props) {
                       )}
                       <Badge color={color as any}>{label}</Badge>
                     </td>
-                    <td className="px-4 py-3 text-sm">
+                    {/* <td className="px-4 py-3 text-sm">
                       {!prize.Guid_TicketId || prize.Guid_TicketId === 'null'
                         ? 'No Winner Selected'
                         : prize.Guid_TicketId}
+                    </td> */}
+                    <td className="px-4 py-3 text-sm">
+                      {!prize.Guid_TicketId || prize.Guid_TicketId === 'null' ? (
+                        'No Winner Selected'
+                      ) : (
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1 rounded border border-zinc-300 px-2 py-1 text-xs text-indigo-700 underline decoration-dotted hover:bg-zinc-50 dark:border-zinc-700 dark:text-indigo-300 dark:hover:bg-zinc-800"
+                          onMouseEnter={() => void getTicket(prize.Guid_TicketId)} // prefetch for snappy UX
+                          onFocus={() => void getTicket(prize.Guid_TicketId)}
+                          onClick={() => openWinner(prize.Guid_TicketId)}
+                          title="View purchaser details"
+                        >
+                          {prize.Guid_TicketId}
+                          <span className="opacity-60">(View purchaser)</span>
+                        </button>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-sm">{renderActionButton(prize)}</td>
                     <td className="px-4 py-3 text-sm">
@@ -970,6 +1003,87 @@ export function RaffleInfoTab({ raffle, prizes, buyIns, onUpdated }: Props) {
             className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
           >
             {prizeId && loadingId === prizeId ? 'Saving…' : 'Save & Update'}
+          </button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Winner Details Dialog */}
+      <Dialog open={winnerOpen} onClose={() => setWinnerOpen(false)} size="md" aria-label="Winner purchaser">
+        <DialogTitle className="text-zinc-900 dark:text-zinc-100">Winner Purchaser</DialogTitle>
+        <DialogBody>
+          {winnerTicketId
+            ? (() => {
+                const s = ticketStatus(winnerTicketId)
+                const err = ticketError(winnerTicketId)
+                const t = peekTicket(winnerTicketId)
+
+                if (s === 'loading' && !t) {
+                  return <div className="text-xs text-zinc-500 dark:text-zinc-400">Loading ticket…</div>
+                }
+                if (s === 'error' && !t) {
+                  return (
+                    <div className="rounded border border-red-200 bg-red-50 p-2 text-xs text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
+                      {err || 'Failed to load ticket.'}
+                    </div>
+                  )
+                }
+                if (!t) return <div className="text-xs text-zinc-500 dark:text-zinc-400">No data.</div>
+
+                return (
+                  <div className="space-y-2 text-sm">
+                    <div className="font-medium text-zinc-900 dark:text-zinc-100">{t.VC_PlayerFullName || '—'}</div>
+                    <div className="flex flex-wrap gap-2 text-zinc-700 dark:text-zinc-200">
+                      <span className="inline-flex items-center gap-1 rounded border border-zinc-300 bg-zinc-50 px-2 py-1 dark:border-zinc-700 dark:bg-zinc-800">
+                        <EnvelopeIcon className="h-4 w-4 opacity-70" />
+                        {t.VC_PlayerEmail || '—'}
+                      </span>
+                      {t.VC_PlayerPhone && (
+                        <span className="inline-flex items-center gap-1 rounded border border-zinc-300 bg-zinc-50 px-2 py-1 dark:border-zinc-700 dark:bg-zinc-800">
+                          <PhoneIcon className="h-4 w-4 opacity-70" />
+                          {t.VC_PlayerPhone}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-2 rounded-md border border-zinc-200 bg-zinc-50 p-3 text-xs dark:border-zinc-700 dark:bg-zinc-800/60">
+                      <div className="mb-1.5 flex items-center gap-1.5 font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
+                        <HomeIcon className="h-3.5 w-3.5" />
+                        Address
+                      </div>
+                      <div className="text-zinc-700 dark:text-zinc-200">
+                        <div>{t.VC_PlayerAddr1 || '—'}</div>
+                        {t.VC_PlayerAddr2 ? <div>{t.VC_PlayerAddr2}</div> : null}
+                        <div>
+                          {t.VC_PlayerCity || '—'}
+                          {t.VC_PlayerProvince ? `, ${t.VC_PlayerProvince}` : ''}{' '}
+                          {t.VC_PlayerPostalCode ? t.VC_PlayerPostalCode : ''}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                      <div>
+                        <b>Ticket ID:</b> {t.Guid_TicketId}
+                      </div>
+                      <div>
+                        <b>Purchase ID:</b> {t.Guid_PurchaseId}
+                      </div>
+                      <div>
+                        <b>Purchased:</b> {new Date(t.Dt_Purchased).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()
+            : null}
+        </DialogBody>
+        <DialogActions>
+          <button
+            type="button"
+            onClick={() => setWinnerOpen(false)}
+            className="rounded-md border px-3 py-1.5 text-xs hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+          >
+            Close
           </button>
         </DialogActions>
       </Dialog>

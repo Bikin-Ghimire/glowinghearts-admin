@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
     }
 
     // --- 4) GET charity from your backend ---
-    const charityGetUrl = `${API_URL.replace(/\/$/, '')}/Charities/${encodeURIComponent(charityId)}`
+    const charityGetUrl = `${API_URL.replace(/\/$/, '')}/Charity/${encodeURIComponent(charityId)}`
     let charityRes: Response
     try {
       charityRes = await fetch(charityGetUrl, {
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
     }
 
     // --- 5) PUT charity with Stripe account id ---
-    const charityPutUrl = `${API_URL.replace(/\/$/, '')}/Charities/${encodeURIComponent(charityId)}`
+    const charityPutUrl = `${API_URL.replace(/\/$/, '')}/Charity/${encodeURIComponent(charityId)}`
     const putPayload = {
       VC_CharityDesc: existing.VC_CharityDesc ?? '',
       Txt_CharityDesc: existing.Txt_CharityDesc ?? '',

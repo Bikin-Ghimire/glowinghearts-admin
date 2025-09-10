@@ -4,14 +4,14 @@
 import { usePurchaseDetails } from '@/hooks/use-purchase-details'
 import type { PackageItem } from '@/lib/purchases'
 import {
+  CheckCircleIcon,
+  ComputerDesktopIcon,
   EnvelopeIcon,
+  GlobeAltIcon,
+  HomeIcon,
+  MapPinIcon,
   PhoneIcon,
   UserIcon,
-  MapPinIcon,
-  HomeIcon,
-  GlobeAltIcon,
-  ComputerDesktopIcon,
-  CheckCircleIcon,
   XCircleIcon,
 } from '@heroicons/react/16/solid'
 import {
@@ -25,6 +25,9 @@ import {
 import { format } from 'date-fns'
 import React, { useMemo, useState } from 'react'
 import RefundDialog from './refund-dialog'
+import { parseISO, startOfDay, endOfDay } from 'date-fns'
+import { on } from 'events'
+import { set } from 'zod'
 
 type Purchase = {
   Guid_PurchaseId: string
@@ -32,16 +35,37 @@ type Purchase = {
   Dec_TotalPrice: number
   Dt_Purchased: string
   obj_Packages: PackageItem[]
+  Guid_RefundId?: string | null
+  Dec_RefundAmount?: number | null
+  Dt_Credit?: string | null
 }
 
 type Props = {
   purchases: Purchase[]
   raffleId: string
+  onDataChanged?: () => Promise<void>
+}
+
+// Robust date parser for 'YYYY-MM-DD HH:mm:ss' or ISO
+function toDateSafe(s: string | null | undefined): Date | null {
+  if (!s) return null
+  const isoish = s.includes('T') ? s : s.replace(' ', 'T') + (s.endsWith('Z') ? '' : 'Z')
+  const d = new Date(isoish)
+  return isNaN(d.getTime()) ? null : d
 }
 
 const columnHelper = createColumnHelper<Purchase>()
 
-export function RaffleSalesTab({ purchases, raffleId }: Props) {
+function isRefunded(d?: { Guid_RefundId?: string | null }) {
+  return !!(d?.Guid_RefundId && d.Guid_RefundId !== '00000000-0000-0000-0000-000000000000')
+}
+
+function formatMoney(n?: number | null) {
+  if (n === null || n === undefined || Number.isNaN(Number(n))) return ''
+  return `$${Number(n).toFixed(2)}`
+}
+
+export function RaffleSalesTab({ purchases, raffleId, onDataChanged }: Props) {
   const [expanded, setExpanded] = useState<import('@tanstack/react-table').ExpandedState>({})
   const { get, refresh, peek, status, error } = usePurchaseDetails()
 
@@ -49,6 +73,28 @@ export function RaffleSalesTab({ purchases, raffleId }: Props) {
   const [activePurchaseId, setActivePurchaseId] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
   const [exportErr, setExportErr] = useState<string | null>(null)
+
+  const [searchId, setSearchId] = useState('')
+  const [from, setFrom] = useState<string>('')
+  const [to, setTo] = useState<string>('')
+
+  // filter source rows instantly (client-side)
+  const filtered = useMemo(() => {
+    const q = searchId.trim().toLowerCase()
+    const fromDate = from ? startOfDay(parseISO(from)) : null
+    const toDate = to ? endOfDay(parseISO(to)) : null
+
+    return purchases.filter(p => {
+      if (q && !p.Guid_PurchaseId.toLowerCase().includes(q)) return false
+      if (fromDate || toDate) {
+        const d = toDateSafe(p.Dt_Purchased)
+        if (!d) return false
+        if (fromDate && d < fromDate) return false
+        if (toDate && d > toDate) return false
+      }
+      return true
+    })
+  }, [purchases, searchId, from, to])
 
   const columns: ColumnDef<Purchase, any>[] = [
     columnHelper.accessor('Guid_PurchaseId', {
@@ -76,7 +122,7 @@ export function RaffleSalesTab({ purchases, raffleId }: Props) {
   ]
 
   const table = useReactTable({
-    data: purchases,
+    data: filtered,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getExpandedRowModel: getExpandedRowModel(),
@@ -161,7 +207,10 @@ export function RaffleSalesTab({ purchases, raffleId }: Props) {
       const rows = purchases.map((p) => {
         const d = peek(p.Guid_PurchaseId) ?? ({} as any)
         const bundles = (d?.obj_Packages ?? p.obj_Packages ?? []) as PackageItem[]
-        const bundleDescs = bundles.map((b) => b?.VC_Description).filter(Boolean).join(' | ')
+        const bundleDescs = bundles
+          .map((b) => b?.VC_Description)
+          .filter(Boolean)
+          .join(' | ')
         const allTickets = bundles
           .flatMap((b) => b?.obj_Tickets ?? [])
           .filter(Boolean)
@@ -212,21 +261,66 @@ export function RaffleSalesTab({ purchases, raffleId }: Props) {
     }
   }
 
+
+
+async function waitForWebhookThenRefresh(purchaseId: string) {
+  const timeoutAt = Date.now() + 10_000
+  while (Date.now() < timeoutAt) {
+    const d = await refresh(purchaseId)
+    if (d && d.Guid_RefundId && d.Guid_RefundId !== '00000000-0000-0000-0000-000000000000') {
+      return d
+    }
+  }
+}
+
   return (
     <>
       {/* Top bar: CSV export button */}
-      <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="mb-3 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
         <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Sales</div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           {exportErr && (
             <span className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
               {exportErr}
             </span>
           )}
+
+          <label className="flex flex-col text-xs">
+            <span className="mb-1 text-zinc-600 dark:text-zinc-300">Search by Purchase ID</span>
+            <input
+              value={searchId}
+              onChange={(e) => setSearchId(e.target.value)}
+              placeholder="GUID / cs_ / pi_"
+              className="w-[26rem] rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm outline-none
+                         focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-zinc-700 dark:bg-zinc-900"
+            />
+          </label>
+          <div className="flex gap-2">
+            <label className="flex flex-col text-xs">
+              <span className="mb-1 text-zinc-600 dark:text-zinc-300">From</span>
+              <input
+                type="date"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+                className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm outline-none
+                           focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-zinc-700 dark:bg-zinc-900"
+              />
+            </label>
+            <label className="flex flex-col text-xs">
+              <span className="mb-1 text-zinc-600 dark:text-zinc-300">To</span>
+              <input
+                type="date"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm outline-none
+                           focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-zinc-700 dark:bg-zinc-900"
+              />
+            </label>
+          </div>
           <button
             type="button"
             onClick={downloadCSV}
-            disabled={exporting || purchases.length === 0}
+            disabled={exporting || filtered.length === 0}
             className={[
               'inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm ring-1 ring-indigo-700/40 ring-inset',
               'hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300',
@@ -246,10 +340,7 @@ export function RaffleSalesTab({ purchases, raffleId }: Props) {
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id} className="border-b border-zinc-200 dark:border-zinc-700">
                 {headerGroup.headers.map((header) => (
-                  <th
-                    key={header.id}
-                    className="px-4 py-3 text-[13px] font-semibold text-zinc-900 dark:text-zinc-50"
-                  >
+                  <th key={header.id} className="px-4 py-3 text-[13px] font-semibold text-zinc-900 dark:text-zinc-50">
                     {flexRender(header.column.columnDef.header, header.getContext())}
                   </th>
                 ))}
@@ -268,7 +359,7 @@ export function RaffleSalesTab({ purchases, raffleId }: Props) {
               return (
                 <React.Fragment key={row.id}>
                   <tr
-                    className="cursor-pointer align-top hover:bg-zinc-50 focus-within:bg-zinc-50 dark:hover:bg-zinc-800/70 dark:focus-within:bg-zinc-800/70"
+                    className="cursor-pointer align-top focus-within:bg-zinc-50 hover:bg-zinc-50 dark:focus-within:bg-zinc-800/70 dark:hover:bg-zinc-800/70"
                     onClick={() => handleRowToggle(pid, row.toggleExpanded)}
                     aria-expanded={row.getIsExpanded()}
                     tabIndex={0}
@@ -339,13 +430,18 @@ export function RaffleSalesTab({ purchases, raffleId }: Props) {
                                 <div className="flex flex-wrap justify-start gap-2 md:justify-end">
                                   <StatusPill ok={det.Int_AgeVerified} label="Age Verified" />
                                   <StatusPill ok={det.Int_TC_Confirmed} label="T&C Accepted" />
+                                  {isRefunded(det) && (
+                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2 py-1 text-[11px] font-medium text-zinc-700 ring-1 ring-red-300 ring-inset dark:bg-zinc-800 dark:text-zinc-200 dark:ring-zinc-700">
+                                      Refunded
+                                    </span>
+                                  )}
                                 </div>
                               </div>
 
                               {/* Address & Meta */}
                               <div className="mt-3 grid gap-2 md:grid-cols-2">
                                 <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-800/60">
-                                  <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                  <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
                                     <HomeIcon className="h-3.5 w-3.5" />
                                     Address
                                   </div>
@@ -353,7 +449,7 @@ export function RaffleSalesTab({ purchases, raffleId }: Props) {
                                     <div>{det.VC_PlayerAddr1 || '—'}</div>
                                     {det.VC_PlayerAddr2 ? <div>{det.VC_PlayerAddr2}</div> : null}
                                     <div>
-                                      {(det.VC_PlayerCity || '—')}{' '}
+                                      {det.VC_PlayerCity || '—'}{' '}
                                       {det.VC_PlayerProvince ? `, ${det.VC_PlayerProvince}` : ''}{' '}
                                       {det.VC_PlayerPostalCode ? ` ${det.VC_PlayerPostalCode}` : ''}
                                     </div>
@@ -361,7 +457,7 @@ export function RaffleSalesTab({ purchases, raffleId }: Props) {
                                 </div>
 
                                 <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-800/60">
-                                  <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                  <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
                                     <GlobeAltIcon className="h-3.5 w-3.5" />
                                     Location & Device
                                   </div>
@@ -378,17 +474,46 @@ export function RaffleSalesTab({ purchases, raffleId }: Props) {
                                 </div>
                               </div>
 
+                              {det && isRefunded(det) && (
+                                <div className="mt-3 rounded-lg border border-red-300/50 bg-red-50 p-3 text-sm text-red-900 dark:border-red-700/50 dark:bg-red-900/20 dark:text-red-200">
+                                  <div className="font-semibold">Refund details</div>
+                                  <div className="mt-1 grid gap-1 sm:grid-cols-2">
+                                    <div>
+                                      <span className="opacity-70">Refund ID:</span> {det.Guid_RefundId}
+                                    </div>
+                                    <div>
+                                      <span className="opacity-70">Amount:</span> {formatMoney(det.Dec_RefundAmount)}
+                                    </div>
+                                    <div className="sm:col-span-2">
+                                      <span className="opacity-70">Credited at:</span>{' '}
+                                      {det.Dt_Credit ? format(new Date(det.Dt_Credit), 'MMMM d, yyyy, h:mm a') : '—'}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
                               {/* Actions */}
                               <div className="mt-3 flex flex-wrap gap-2">
                                 <button
                                   type="button"
-                                  className="inline-flex items-center rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm ring-1 ring-red-700/40 ring-inset hover:bg-red-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 dark:ring-red-900/60"
+                                  className={[
+                                    'inline-flex items-center rounded-md px-3 py-1.5 text-xs font-semibold shadow-sm ring-1 ring-inset focus:outline-none',
+                                    isRefunded(det)
+                                      ? 'cursor-not-allowed border border-zinc-300 bg-zinc-100 text-zinc-500 ring-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:ring-zinc-700'
+                                      : 'bg-red-600 text-white ring-red-700/40 hover:bg-red-500 focus-visible:ring-2 focus-visible:ring-red-300 dark:ring-red-900/60',
+                                  ].join(' ')}
                                   onClick={(e) => {
                                     e.stopPropagation()
+                                    if (isRefunded(det)) {
+                                      alert('This purchase has already been refunded.') // swap with your toast if you have one
+                                      return
+                                    }
                                     setActivePurchaseId(pid)
                                     setRefundOpen(true)
                                   }}
-                                  aria-label="Refund this purchase"
+                                  aria-label={isRefunded(det) ? 'Already refunded' : 'Refund this purchase'}
+                                  disabled={isRefunded(det)}
+                                  title={isRefunded(det) ? 'Already refunded' : undefined}
                                 >
                                   Refund
                                 </button>
@@ -423,7 +548,10 @@ export function RaffleSalesTab({ purchases, raffleId }: Props) {
                                 {pkg.obj_Tickets.map((ticket, i) => (
                                   <span
                                     key={i}
-                                    className="inline-block rounded border border-zinc-200 bg-white px-2 py-1 text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                                    className={[
+                                      'inline-block rounded border border-zinc-200 bg-white px-2 py-1 text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100',
+                                      isRefunded(det) ? 'line-through opacity-60' : '',
+                                    ].join(' ')}
                                   >
                                     {ticket}
                                   </span>
@@ -452,8 +580,10 @@ export function RaffleSalesTab({ purchases, raffleId }: Props) {
         totalAmount={activePurchaseId ? peek(activePurchaseId)?.Dec_TotalPrice : undefined}
         onSuccess={async () => {
           if (activePurchaseId) {
-            await refresh(activePurchaseId)
+            await waitForWebhookThenRefresh(activePurchaseId)
           }
+          await onDataChanged?.()
+          setRefundOpen(false)
         }}
       />
     </>

@@ -1,23 +1,10 @@
 // middleware.ts
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
+import type { NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
 
-/**
- * Exact public pages (no params)
- */
-const PUBLIC_PAGES = new Set<string>([
-  '/login',
-  '/forgot-password',
-])
-
-/**
- * Public URL prefixes (with dynamic segments after)
- * e.g., /users/reset-password/<key1>/<key2>
- */
-const PUBLIC_PREFIXES = [
-  '/users/reset-password',
-]
+const PUBLIC_PAGES = new Set<string>(['/login', '/forgot-password'])
+const PUBLIC_PREFIXES = ['/users/reset-password']
 
 function isPublicPath(pathname: string) {
   if (PUBLIC_PAGES.has(pathname)) return true
@@ -25,27 +12,46 @@ function isPublicPath(pathname: string) {
 }
 
 export async function middleware(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
   const { pathname } = req.nextUrl
-
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
   let response: NextResponse
 
-  // If the path is public (including reset-password), always allow
+  // Public pages
   if (isPublicPath(pathname)) {
-    // Optional: if logged in and visiting /login or /forgot-password, redirect to app
     if (token && (pathname === '/login' || pathname === '/forgot-password')) {
       response = NextResponse.redirect(new URL('/', req.url))
     } else {
       response = NextResponse.next()
     }
   } else if (!token) {
-    // Protected route and not logged in → go to login
+    // Protected route: need auth
     response = NextResponse.redirect(new URL('/login', req.url))
   } else {
-    response = NextResponse.next()
+    // ----- Idle timeout enforcement -----
+    const IDLE_LIMIT_SEC = 15 * 60
+    const lastActiveStr = req.cookies.get('__Host-last-active')?.value
+    const nowSec = Math.floor(Date.now() / 1000)
+    const lastActive = lastActiveStr ? Number(lastActiveStr) : nowSec
+
+    if (nowSec - lastActive > IDLE_LIMIT_SEC) {
+      // Idle too long → force re-auth
+      response = NextResponse.redirect(new URL('/login', req.url))
+      response.cookies.delete('__Host-last-active')
+    } else {
+      response = NextResponse.next()
+      // refresh last-active on each request
+
+      const isProd = process.env.NODE_ENV === 'production'
+      response.cookies.set('__Host-last-active', String(nowSec), {
+        httpOnly: true,
+        secure: isProd, // <— only secure in prod
+        sameSite: 'lax',
+        path: '/',
+      })
+    }
   }
 
-  // Keep your rememberMe cookie sync
+  // Bridge rememberMeForward -> rememberMe (your existing pattern)
   const rememberMeFromClient = req.cookies.get('rememberMeForward')?.value
   if (rememberMeFromClient !== undefined) {
     response.cookies.set('rememberMe', rememberMeFromClient, {
@@ -53,6 +59,7 @@ export async function middleware(req: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
+      maxAge: 60 * 60 * 24 * 30, // keep pref for 30d
     })
     response.cookies.delete('rememberMeForward')
   }

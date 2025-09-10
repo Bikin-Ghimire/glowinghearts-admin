@@ -3,15 +3,16 @@
 
 import { useState } from 'react'
 import RichTextEditorTiptap from '@/components/rich-text'
+import { isValidImageUrl, toLocalISO, toServerDT } from '@/lib/validators'
 
-const isValidImageUrl = (url: string) => {
-  try {
-    const u = new URL(url)
-    return /\.(jpeg|jpg|gif|png|webp|bmp|svg)$/i.test(u.pathname)
-  } catch {
-    return false
-  }
-}
+// const isValidImageUrl = (url: string) => {
+//   try {
+//     const u = new URL(url)
+//     return /\.(jpeg|jpg|gif|png|webp|bmp|svg)$/i.test(u.pathname)
+//   } catch {
+//     return false
+//   }
+// }
 
 interface RaffleDetailsStepProps {
   licenseNo: string
@@ -160,7 +161,7 @@ export default function RaffleDetailsStep({
             alert('Start date/time must be in the future.')
             return
           }
-          setSalesStartDate(e.target.value)
+          setSalesStartDate(toServerDT(e.target.value))
         }}
         min={new Date().toISOString().slice(0, 16)}
         className="mb-4 block w-full rounded-md border border-zinc-300 bg-white p-2 text-zinc-900
@@ -181,7 +182,7 @@ export default function RaffleDetailsStep({
             alert('End date/time must be after the start date.')
             return
           }
-          setSalesEndDate(e.target.value)
+          setSalesEndDate(toServerDT(e.target.value))
         }}
         min={salesStartDate || new Date().toISOString().slice(0, 16)}
         className="mb-4 block w-full rounded-md border border-zinc-300 bg-white p-2 text-zinc-900
