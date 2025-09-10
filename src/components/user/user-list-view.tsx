@@ -1,16 +1,19 @@
 'use client'
 
-import { useMemo, useState } from 'react'
 import { Badge, BadgeColor } from '@/components/badge'
 import { Button } from '@/components/button'
 import { Heading } from '@/components/heading'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/table'
-import { useUsersAccessMap } from '@/hooks/use-user-acess-levels' // keep your existing path
+import { useUsersAccessMap } from '@/hooks/use-user-acess-levels'
 import { activateUser, deactivateUser, editUserInfo, updateUserAccess } from '@/lib/users'
 import { userStatusMap } from '@/lib/utils'
 import { User } from '@/types/user'
-import { CheckIcon, PencilSquareIcon, PlusIcon, PowerIcon, XMarkIcon } from '@heroicons/react/16/solid'
+import { CheckIcon, ListBulletIcon, PencilSquareIcon, PlusIcon, PowerIcon, XMarkIcon } from '@heroicons/react/16/solid'
+import { ClockIcon } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { Toaster, toast } from 'react-hot-toast'
+import UserActivityDrawer from './user-activity-drawer'
+import UserHistoryDrawer from './user-history-drawer'
 
 interface Props {
   users: User[]
@@ -35,19 +38,28 @@ export default function UserListView({ users, setUsers, session }: Props) {
   const userIds = useMemo(() => users.map((u) => u.Guid_UserId), [users])
   const { accessMap, loading } = useUsersAccessMap(userIds)
 
+  // current signed-in user id
+  const selfId: string | undefined = session?.user?.id
+
   // local UI state
   const [editingAccessId, setEditingAccessId] = useState<string | null>(null)
   const [accessDraft, setAccessDraft] = useState<Record<string, number>>({})
   const [savingAccessId, setSavingAccessId] = useState<string | null>(null)
 
   const [editingUserId, setEditingUserId] = useState<string | null>(null)
-  const [userDraft, setUserDraft] = useState<{ VC_FirstName: string; VC_LastName: string; VC_Email: string } | null>(null)
+  const [userDraft, setUserDraft] = useState<{ VC_FirstName: string; VC_LastName: string; VC_Email: string } | null>(
+    null
+  )
   const [savingUser, setSavingUser] = useState(false)
 
   // only set after successful save (pessimistic)
   const [accessOverride, setAccessOverride] = useState<Record<string, string>>({})
 
   const handleStartEditAccess = (userId: string) => {
+    if (userId === selfId) {
+      toast.error("You can't change your own access level.")
+      return
+    }
     setEditingAccessId(userId)
     const currentLabel = accessOverride[userId] ?? accessMap[userId]
     const initial = labelToInt(currentLabel) ?? 1
@@ -55,6 +67,10 @@ export default function UserListView({ users, setUsers, session }: Props) {
   }
 
   const handleSaveAccess = async (userId: string) => {
+    if (userId === selfId) {
+      toast.error("You can't change your own access level.")
+      return
+    }
     const nextInt = accessDraft[userId]
     if (nextInt == null) return
     const nextLabel = ACCESS_OPTIONS.find((o) => o.value === nextInt)?.label ?? 'N/A'
@@ -92,9 +108,7 @@ export default function UserListView({ users, setUsers, session }: Props) {
     try {
       setSavingUser(true)
       await editUserInfo(editingUserId, userDraft, session)
-      setUsers((prev) =>
-        prev.map((u) => (u.Guid_UserId === editingUserId ? { ...u, ...userDraft } : u))
-      )
+      setUsers((prev) => prev.map((u) => (u.Guid_UserId === editingUserId ? { ...u, ...userDraft } : u)))
       toast.success('User info updated')
       setEditingUserId(null)
       setUserDraft(null)
@@ -106,26 +120,50 @@ export default function UserListView({ users, setUsers, session }: Props) {
   }
 
   const toggleActive = async (u: User) => {
+    if (u.Guid_UserId === selfId) {
+      toast.error("You can't deactivate your own account.")
+      return
+    }
     const isActive = u.Int_UserStatus === 1 // adjust if your codes differ
     const confirmMsg = isActive ? 'Deactivate this user?' : 'Activate this user?'
     if (!window.confirm(confirmMsg)) return
     try {
       if (isActive) {
         await deactivateUser(u.Guid_UserId, session)
-        setUsers((prev) =>
-          prev.map((x) => (x.Guid_UserId === u.Guid_UserId ? { ...x, Int_UserStatus: 2 } : x))
-        )
+        setUsers((prev) => prev.map((x) => (x.Guid_UserId === u.Guid_UserId ? { ...x, Int_UserStatus: 2 } : x)))
         toast.success('User deactivated')
       } else {
         await activateUser(u.Guid_UserId, session)
-        setUsers((prev) =>
-          prev.map((x) => (x.Guid_UserId === u.Guid_UserId ? { ...x, Int_UserStatus: 1 } : x))
-        )
+        setUsers((prev) => prev.map((x) => (x.Guid_UserId === u.Guid_UserId ? { ...x, Int_UserStatus: 1 } : x)))
         toast.success('User activated')
       }
     } catch {
       toast.error('Failed to change status')
     }
+  }
+
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyUser, setHistoryUser] = useState<User | null>(null)
+
+  const openHistory = (u: User) => {
+    setHistoryUser(u)
+    setHistoryOpen(true)
+  }
+  const closeHistory = () => {
+    setHistoryOpen(false)
+    setHistoryUser(null)
+  }
+
+  const [activityOpen, setActivityOpen] = useState(false)
+  const [activityUser, setActivityUser] = useState<User | null>(null)
+
+  const openActivity = (u: User) => {
+    setActivityUser(u)
+    setActivityOpen(true)
+  }
+  const closeActivity = () => {
+    setActivityOpen(false)
+    setActivityUser(null)
   }
 
   return (
@@ -135,8 +173,8 @@ export default function UserListView({ users, setUsers, session }: Props) {
         toastOptions={{
           className:
             'border border-zinc-200 bg-white text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100',
-          success: { iconTheme: { primary: '#22c55e', secondary: 'transparent' } }, // green-500
-          error: { iconTheme: { primary: '#ef4444', secondary: 'transparent' } },   // red-500
+          success: { iconTheme: { primary: '#22c55e', secondary: 'transparent' } },
+          error: { iconTheme: { primary: '#ef4444', secondary: 'transparent' } },
         }}
       />
 
@@ -167,16 +205,23 @@ export default function UserListView({ users, setUsers, session }: Props) {
 
             const isEditingAccess = editingAccessId === user.Guid_UserId
             const draftVal = accessDraft[user.Guid_UserId]
+            const isSelf = user.Guid_UserId === selfId
 
             return (
               <TableRow key={user.Guid_UserId} title={`User #${user.Guid_UserId}`} href="">
                 {/* Name + inline edit */}
                 <TableCell className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
-                  <span>{user.VC_FirstName} {user.VC_LastName}</span>
+                  <span>
+                    {user.VC_FirstName} {user.VC_LastName}
+                  </span>
                   <button
                     type="button"
                     className="text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); openEditUser(user) }}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      openEditUser(user)
+                    }}
                     title="Edit user info"
                   >
                     <PencilSquareIcon className="h-4 w-4" />
@@ -191,17 +236,22 @@ export default function UserListView({ users, setUsers, session }: Props) {
                   {isEditingAccess ? (
                     <div className="flex items-center gap-2">
                       <select
-                        className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900
-                                   dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                        className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
                         value={draftVal ?? labelToInt(currentAccessLabel) ?? 1}
                         onChange={(e) =>
                           setAccessDraft((prev) => ({ ...prev, [user.Guid_UserId]: Number(e.target.value) }))
                         }
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
-                        disabled={savingAccessId === user.Guid_UserId}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                        }}
+                        disabled={savingAccessId === user.Guid_UserId || isSelf}
+                        title={isSelf ? "You can't change your own access level." : 'Select access level'}
                       >
                         {ACCESS_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
                         ))}
                       </select>
 
@@ -220,16 +270,25 @@ export default function UserListView({ users, setUsers, session }: Props) {
                         <>
                           <button
                             type="button"
-                            className="rounded p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSaveAccess(user.Guid_UserId) }}
-                            title="Save"
+                            className="rounded p-1 hover:bg-zinc-100 disabled:opacity-50 dark:hover:bg-zinc-800"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              handleSaveAccess(user.Guid_UserId)
+                            }}
+                            title={isSelf ? "You can't change your own access level." : 'Save'}
+                            disabled={isSelf}
                           >
                             <CheckIcon className="h-4 w-4 text-zinc-700 dark:text-zinc-200" />
                           </button>
                           <button
                             type="button"
                             className="rounded p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCancelAccess() }}
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              handleCancelAccess()
+                            }}
                             title="Cancel"
                           >
                             <XMarkIcon className="h-4 w-4 text-zinc-700 dark:text-zinc-200" />
@@ -242,15 +301,23 @@ export default function UserListView({ users, setUsers, session }: Props) {
                       <span className="text-zinc-900 dark:text-zinc-100">
                         {currentAccessLabel ?? (loading ? 'Loading…' : 'N/A')}
                       </span>
-                      <button
-                        type="button"
-                        className="text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 disabled:opacity-50"
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleStartEditAccess(user.Guid_UserId) }}
-                        title="Change access level"
-                        disabled={loading || savingAccessId === user.Guid_UserId}
-                      >
-                        <PencilSquareIcon className="h-4 w-4" />
-                      </button>
+
+                      {/* Hide the pencil for self */}
+                      {!isSelf && (
+                        <button
+                          type="button"
+                          className="text-zinc-500 hover:text-zinc-800 disabled:opacity-50 dark:text-zinc-400 dark:hover:text-zinc-200"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            handleStartEditAccess(user.Guid_UserId)
+                          }}
+                          title="Change access level"
+                          disabled={loading || savingAccessId === user.Guid_UserId}
+                        >
+                          <PencilSquareIcon className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   )}
                 </TableCell>
@@ -259,16 +326,53 @@ export default function UserListView({ users, setUsers, session }: Props) {
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-3">
                     <Badge color={color as BadgeColor}>{label}</Badge>
+
+                    {/* History button */}
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1 rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-800 hover:bg-zinc-50
-                                 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleActive(user) }}
-                      title={user.Int_UserStatus === 1 ? 'Deactivate' : 'Activate'}
+                      className="inline-flex items-center gap-1 rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        openHistory(user)
+                      }}
+                      title="View history"
                     >
-                      <PowerIcon className="h-4 w-4" />
-                      {user.Int_UserStatus === 1 ? 'Deactivate' : 'Activate'}
+                      <ClockIcon className="h-4 w-4" />
+                      History
                     </button>
+
+                    {/* Activity button */}
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        openActivity(user)
+                      }}
+                      title="View API activity"
+                    >
+                      <ListBulletIcon className="h-4 w-4" />
+                      Activity
+                    </button>
+
+                    {/* Activate/Deactivate — hidden for self */}
+                    {user.Guid_UserId !== selfId && (
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          toggleActive(user)
+                        }}
+                        title={user.Int_UserStatus === 1 ? 'Deactivate' : 'Activate'}
+                      >
+                        <PowerIcon className="h-4 w-4" />
+                        {user.Int_UserStatus === 1 ? 'Deactivate' : 'Activate'}
+                      </button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
@@ -281,11 +385,13 @@ export default function UserListView({ users, setUsers, session }: Props) {
       {editingUserId && userDraft && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-          onClick={() => { setEditingUserId(null); setUserDraft(null) }}
+          onClick={() => {
+            setEditingUserId(null)
+            setUserDraft(null)
+          }}
         >
           <div
-            className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 text-zinc-900 shadow-xl
-                       dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+            className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 text-zinc-900 shadow-xl dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="mb-4 text-lg font-semibold">Edit User</h3>
@@ -293,9 +399,7 @@ export default function UserListView({ users, setUsers, session }: Props) {
               <div>
                 <label className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300">First name</label>
                 <input
-                  className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-zinc-900
-                             focus:outline-none focus:ring-2 focus:ring-zinc-300
-                             dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:ring-zinc-600"
+                  className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:ring-2 focus:ring-zinc-300 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:ring-zinc-600"
                   value={userDraft.VC_FirstName}
                   onChange={(e) => setUserDraft({ ...userDraft, VC_FirstName: e.target.value })}
                 />
@@ -303,9 +407,7 @@ export default function UserListView({ users, setUsers, session }: Props) {
               <div>
                 <label className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300">Last name</label>
                 <input
-                  className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-zinc-900
-                             focus:outline-none focus:ring-2 focus:ring-zinc-300
-                             dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:ring-zinc-600"
+                  className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:ring-2 focus:ring-zinc-300 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:ring-zinc-600"
                   value={userDraft.VC_LastName}
                   onChange={(e) => setUserDraft({ ...userDraft, VC_LastName: e.target.value })}
                 />
@@ -313,9 +415,7 @@ export default function UserListView({ users, setUsers, session }: Props) {
               <div>
                 <label className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300">Email</label>
                 <input
-                  className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-zinc-900
-                             focus:outline-none focus:ring-2 focus:ring-zinc-300
-                             dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:ring-zinc-600"
+                  className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:ring-2 focus:ring-zinc-300 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:ring-zinc-600"
                   value={userDraft.VC_Email}
                   onChange={(e) => setUserDraft({ ...userDraft, VC_Email: e.target.value })}
                 />
@@ -323,13 +423,15 @@ export default function UserListView({ users, setUsers, session }: Props) {
               <div className="mt-4 flex items-center justify-end gap-2">
                 <button
                   className="rounded px-3 py-2 text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-zinc-800"
-                  onClick={() => { setEditingUserId(null); setUserDraft(null) }}
+                  onClick={() => {
+                    setEditingUserId(null)
+                    setUserDraft(null)
+                  }}
                 >
                   Cancel
                 </button>
                 <button
-                  className="rounded bg-zinc-900 px-3 py-2 text-white hover:bg-zinc-800 disabled:opacity-50
-                             dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                  className="rounded bg-zinc-900 px-3 py-2 text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
                   onClick={saveUserInfo}
                   disabled={savingUser}
                 >
@@ -340,6 +442,12 @@ export default function UserListView({ users, setUsers, session }: Props) {
           </div>
         </div>
       )}
+
+      {/* HISTORY DRAWER */}
+      <UserHistoryDrawer open={historyOpen} onClose={closeHistory} session={session} user={historyUser} />
+
+      {/* ACTIVITY DRAWER */}
+      <UserActivityDrawer open={activityOpen} onClose={closeActivity} session={session} user={activityUser} />
     </>
   )
 }

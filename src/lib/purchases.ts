@@ -30,6 +30,9 @@ export type GetPurchasePayload = {
   Int_TC_Confirmed?: number
   VC_PurchaseIP?: string
   VC_GeoLocation?: string
+  Guid_RefundId?: string
+  Dec_RefundAmount?: number
+  Dt_Credit?: string
   obj_Packages: PackageItem[]
 }
 
@@ -68,7 +71,7 @@ export async function refundPurchase(session: any, raffleId: string, purchaseId:
     VC_Note: payload.VC_Note || 'Admin-initiated refund',
   }
 
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Refund/${encodeURIComponent(purchaseId)}`, {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Purchase/Refund/${encodeURIComponent(purchaseId)}`, {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

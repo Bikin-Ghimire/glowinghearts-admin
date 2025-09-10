@@ -1,5 +1,7 @@
 // components/raffle/ReviewStep.tsx
 'use client'
+import { format } from 'date-fns'
+import { toLocalISO } from '@/lib/validators'
 
 export default function ReviewStep({
   licenseNo,
@@ -20,8 +22,7 @@ export default function ReviewStep({
   }
 
   // (Optional) keep your original ISO view; if you want local time, swap for toLocaleString().
-  const fmt = (d?: string) =>
-    d ? new Date(d).toISOString().replace('T', ' ').slice(0, 19) : '—'
+  const fmt = (d?: string) => (d ? new Date(d).toLocaleString().replace('T', ' ').slice(0, 19) : '—')
 
   return (
     <div className="space-y-6 text-zinc-900 dark:text-zinc-100">
@@ -40,7 +41,7 @@ export default function ReviewStep({
           <strong className="font-semibold">Location:</strong> {raffleLocation || '—'}
         </p>
         <p className="text-zinc-800 dark:text-zinc-200">
-          <strong className="font-semibold">Sales Period:</strong> {fmt(salesStartDate)} to {fmt(salesEndDate)}
+          <strong className="font-semibold">Sales Period:</strong> {format(toLocalISO(salesStartDate), 'yyyy-MM-dd HH:mm:ss')} to {format(toLocalISO(salesEndDate), 'yyyy-MM-dd HH:mm:ss')}
         </p>
         <p className="text-zinc-800 dark:text-zinc-200">
           <strong className="font-semibold">Banner:</strong>{' '}
@@ -62,7 +63,7 @@ export default function ReviewStep({
       {/* Raffle Description */}
       <div className="space-y-2 rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
         <h3 className="mb-4 text-lg font-medium text-zinc-700 dark:text-zinc-300">Raffle Description</h3>
-        <article className="prose prose-sm max-w-none prose-a:text-blue-600 dark:prose-invert dark:prose-a:text-blue-400">
+        <article className="prose prose-sm max-w-none dark:prose-invert prose-a:text-blue-600 dark:prose-a:text-blue-400">
           <div dangerouslySetInnerHTML={{ __html: raffleDescription || '' }} />
         </article>
       </div>
@@ -70,7 +71,7 @@ export default function ReviewStep({
       {/* Raffle Rules */}
       <div className="space-y-2 rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
         <h3 className="mb-4 text-lg font-medium text-zinc-700 dark:text-zinc-300">Raffle Rules</h3>
-        <article className="prose prose-sm max-w-none prose-a:text-blue-600 dark:prose-invert dark:prose-a:text-blue-400">
+        <article className="prose prose-sm max-w-none dark:prose-invert prose-a:text-blue-600 dark:prose-a:text-blue-400">
           <div dangerouslySetInnerHTML={{ __html: raffleRules || '' }} />
         </article>
       </div>
@@ -87,10 +88,12 @@ export default function ReviewStep({
               <p>Type: {prizeTypeMap[prize?.type] || 'Unknown'}</p>
               <p>Name: {prize?.name || '—'}</p>
               <p>
-                Amount: {' '}
+                Amount:{' '}
                 {Number(prize?.type) === 1
-                ? '50% of Total Jackpot'
-                : (prize?.amount !== undefined && prize?.amount !== '' ? prize.amount : '—')}
+                  ? '50% of Total Jackpot'
+                  : prize?.amount !== undefined && prize?.amount !== ''
+                    ? prize.amount
+                    : '—'}
               </p>
               <p>Draw Date: {fmt(prize?.drawDate)}</p>
               <hr className="my-2 border-zinc-200 dark:border-zinc-700" />
